@@ -206,4 +206,21 @@ void color_balance(Image& image,float red,float green,float blue){
     for(auto& p:image.mutable_pixels()){p.r=clamp_byte(p.r*rGain);p.g=clamp_byte(p.g*gGain);p.b=clamp_byte(p.b*bGain);}
 }
 
+
+void adjust_vibrance(Image& image,float amount){
+    if(!std::isfinite(amount)||amount< -1.0f||amount>1.0f)
+        throw std::invalid_argument("vibrance amount must be in [-1, 1]");
+    if(amount==0.0f)return;
+    for(auto& p:image.mutable_pixels()){
+        const float r=static_cast<float>(p.r),g=static_cast<float>(p.g),b=static_cast<float>(p.b);
+        const float hi=std::max({r,g,b}),lo=std::min({r,g,b});
+        const float saturation=(hi-lo)/255.0f;
+        const float luma=0.2126f*r+0.7152f*g+0.0722f*b;
+        const float scale=1.0f+amount*(1.0f-saturation);
+        p.r=clamp_byte(luma+(r-luma)*scale);
+        p.g=clamp_byte(luma+(g-luma)*scale);
+        p.b=clamp_byte(luma+(b-luma)*scale);
+    }
+}
+
 }
