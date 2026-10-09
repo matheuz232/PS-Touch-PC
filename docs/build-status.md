@@ -49,3 +49,11 @@
 
 ## Iteration 13 — mockup placement
 Added a Win32 mockup-placement prototype: user opens a base/product photo, imports a design image, previews it centered over the base, repositions with arrow keys, scales with wheel or `+`/`-`, then applies or cancels. Applying creates one flattened composite and stores an undo snapshot. This does not perform perspective warping or lighting/material-aware wrapping and is not equivalent to Photoshop's Smart Object mockups. Windows compilation and runtime validation remain outstanding because this sandbox has no Windows toolchain.
+
+
+## Iteration 14 — Windows replacement semantics and CI
+- Added a cross-platform finalization helper for `.ptdoc` and flattened `.psd` saves. Windows uses `MoveFileExA` with `MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH`; POSIX uses `std::rename`. This fixes the Windows case where a second save to an existing destination can fail.
+- Added a regression to save a `.ptdoc` twice to the same destination and reload the newer content.
+- Added `vcpkg.json` for libpng/libjpeg-turbo and `.github/workflows/native-build.yml` with Linux/GCC and Windows x64/MSVC build/test jobs, including the Win32 application target on Windows.
+- Local verification: all seven native test executables compiled with GCC using `-Wall -Wextra -Wpedantic -Wconversion` and passed, including the new overwrite regression.
+- CI status is pending an actual GitHub Actions run; Windows/MSVC compilation and GUI execution are not claimed as passed from this sandbox.
