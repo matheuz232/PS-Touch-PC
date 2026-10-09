@@ -286,7 +286,12 @@ void apply_photo_filter_command(UINT command) {
    }
   }
   render_document();
+  if(MessageBoxW(g_hwnd,L"Pré-visualização do filtro aplicada.\n\nDeseja manter o resultado?\n\nSim: confirmar e manter.\nNão: cancelar e restaurar a camada.",L"Pré-visualização do filtro",MB_YESNO|MB_ICONQUESTION)==IDNO) {
+   if(g_document->undo()) render_document();
+  }
  } catch(const std::exception&) {
+  // The checkpoint is created before mutation, so Undo can recover the layer
+  // if the user rejects a partially applied operation after an exception.
   MessageBoxW(g_hwnd,L"O filtro não pôde ser aplicado. Verifique o tamanho da imagem e os parâmetros.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
  }
 }
