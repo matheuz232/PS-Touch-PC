@@ -214,6 +214,12 @@ void apply_photo_filter_command(UINT command) {
     case 1016: pstouch::color_balance(image,0.12f,0.0f,-0.12f); break;
     case 1017: pstouch::adjust_vibrance(image,0.55f); break;
     case 1018: pstouch::equalize_luminance(image); break;
+    default:
+     if(command>=1100 && command<=1107) {
+      constexpr float strengths[]={-1.0f,-0.75f,-0.5f,-0.25f,0.25f,0.5f,0.75f,1.0f};
+      pstouch::adjust_vibrance(image,strengths[command-1100]);
+     } else return;
+     break;
     default: return;
    }
    g_document->checkpoint("Apply image filter");
