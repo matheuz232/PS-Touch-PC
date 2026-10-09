@@ -1,4 +1,5 @@
 #include "pstouch/image.hpp"
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <iostream>
