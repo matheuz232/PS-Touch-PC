@@ -28,6 +28,12 @@ int main(){
  pstouch::Image hue(1,1,{255,0,0,73});pstouch::adjust_hue(hue,120.0f);assert(hue.at(0,0).g>240&&hue.at(0,0).r<10&&hue.at(0,0).a==73);
  pstouch::Image levels(3,1,{20,30,40,255});levels.at(1,0)={120,130,140,100};levels.at(2,0)={220,230,240,0};pstouch::adjust_levels(levels,20,220,1.0f);assert(levels.at(0,0).r==0&&levels.at(2,0).r==255&&levels.at(1,0).a==100);
  pstouch::Image autoC(2,1,{20,50,100,64});autoC.at(1,0)={220,150,200,128};pstouch::auto_contrast(autoC);assert(autoC.at(0,0).r==0&&autoC.at(1,0).r==255&&autoC.at(0,0).g==0&&autoC.at(1,0).g==255&&autoC.at(0,0).a==64&&autoC.at(1,0).a==128);
+ pstouch::Image autoVisible(2,1,{20,40,60,255});autoVisible.at(1,0)={220,180,140,255};
+ pstouch::Image autoHidden(3,1,{20,40,60,255});autoHidden.at(1,0)={220,180,140,255};autoHidden.at(2,0)={255,0,255,0};
+ pstouch::auto_contrast(autoVisible);pstouch::auto_contrast(autoHidden);
+ assert(autoVisible.at(0,0).r==autoHidden.at(0,0).r&&autoVisible.at(1,0).g==autoHidden.at(1,0).g);
+ assert(autoHidden.at(2,0).r==255&&autoHidden.at(2,0).b==255&&autoHidden.at(2,0).a==0);
+ pstouch::Image allHidden(1,1,{200,100,50,0});pstouch::auto_contrast(allHidden);assert(allHidden.at(0,0).r==200&&allHidden.at(0,0).g==100&&allHidden.at(0,0).b==50);
  bad=false;try{pstouch::adjust_levels(levels,128,128);}catch(const std::invalid_argument&){bad=true;}assert(bad);
 
 
