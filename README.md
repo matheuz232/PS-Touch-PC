@@ -1,1 +1,57 @@
-# PS-Touch-PC
+# PS Touch Native Core — proof of concept
+
+This is the first platform-neutral native-core experiment derived from the APK's discovered image-processing responsibilities. It is **not** a converted Photoshop Touch application and does not yet open the original SWF, reproduce the full filter suite, or generate a complete PS Touch EXE. PSD support is currently limited to flattened RGB/RGBA PSD v1 files.
+
+## Included
+- RGBA8 image buffer with dimension/allocation guards.
+- PNG and JPEG decoding/encoding via libpng and libjpeg.
+- A small CLI that opens an image, applies the brightness/contrast primitive, and writes a result.
+- Native document/layer model with layer order, visibility, opacity, offsets, and nine blend modes modeled on the blend-mode list found in the decompiled application.
+- A versioned, bounded custom `.ptdoc` project format for round-tripping RGBA layer pixels and metadata.
+- Flattened PSD v1 import/export for 8-bit RGB/RGBA: raw and PackBits RLE import; raw planar export. Layered PSD structure is not yet imported/exported.
+- Layer operations: duplicate, rename, reorder, visibility, opacity, and snapshot-based undo/redo history with a 20-step cap.
+- Alpha premultiplication/unpremultiplication.
+- Straight-alpha source-over compositing.
+- Bilinear image resampling, crop, horizontal/vertical flip, 90-degree rotation, grayscale, sepia, and saturation adjustment.
+- Brightness/contrast primitive ported from the formula in the APK’s `contrastbrightness.fs` shader (still requires GPU-vs-CPU pixel-parity validation).
+- Unit tests for the primitives above.
+
+These functions are compatibility building blocks only. Pixel semantics must be compared against the original app before replacing its native extension behavior.
+
+## Build on Windows 10/11 x64
+Install Visual Studio 2022 Build Tools with the **Desktop development with C++** workload, CMake 3.20+, libpng and libjpeg (or use vcpkg to supply both libraries).
+
+```powershell
+cmake -S . -B build -A x64
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
+```
+
+The current test targets are console test executables, not the final application. The development sandbox used for this iteration did not have CMake installed, so the sources were compiled directly with g++ and the installed libpng/libjpeg libraries; the CMake project file is prepared for a Windows build. The next porting gate is a Windows build, layered PSD support, and representative shader/filter output validated against reference output. GPU implementation and original ActionScript UI integration are not yet included.
+
+## Command-line prototype
+
+```powershell
+.\build\Release\pstouch-image.exe input.png output.png 0.1 0.2
+```
+
+This validates an end-to-end native image pipeline only; it is not yet the PS Touch UI or its proprietary document format.
+
+## Native document model
+
+`Document` composites layers bottom-to-top and supports the blend mode names observed in `TTLayer.as` (Normal, Darken, Multiply, Lighten, Screen, Add, Overlay, Difference, Subtract). The custom `.ptdoc` container is a new prototype format and is **not** claimed to be compatible with Adobe PSD or PS Touch internal cache files. PSD import currently flattens a document and accepts only 8-bit RGB/RGBA PSD v1 files with raw or PackBits compression. Export still emits only a flattened composite image; layer records, masks, adjustment layers, CMYK, 16-bit, and PS Touch proprietary formats are not supported. The current layer model is a compatibility-oriented starting point, not a claim of pixel-perfect equivalence with the original GPU renderer.
+
+## Windows UI shell and portable distribution
+
+A first Win32 desktop shell now lives in `windows/pstouch_win32.cpp`. It uses per-monitor DPI awareness, recalculates its layout on `WM_SIZE`, scales the image preview to the available canvas, and reduces/collapses side panels on narrow windows. It provides an Open dialog and wheel zoom. This is a UI integration POC, not the complete editor: save, layer controls, editing tools, and the native image core are not yet wired to this window. GDI+ preview formats are Windows-dependent and PSD preview is not promised.
+
+Portable packaging notes are in `portable/README.txt`. The intended release is a folder containing the EXE, required redistributable runtime files and resources, with configuration/cache/log paths kept beside the application. No installer is planned. The Linux sandbox used for this iteration does not provide an MSVC/Windows GUI runtime, so the Win32 target has not been compiled or executed here.
+
+### Iteration 12 — first interactive editing commands
+The Win32 shell now includes native Save As (PNG/JPEG/BMP/TIFF encoders), grayscale and sepia commands, a bounded 20-snapshot undo history, redo, and Ctrl+S/Ctrl+Z/Ctrl+Y shortcuts. These commands currently operate on a GDI+ bitmap owned by the UI shell; they are intentionally separate from the native `pstouch_image_core` and are not parity-tested against Photoshop Touch. Layered PSD editing and the full original editor remain unimplemented.
+
+
+### Iteration 13 — mockup composition prototype
+The Win32 shell now has a first mockup-composition workflow: open a product/background photo, choose a separate artwork image (transparent PNG recommended), reposition it with the arrow keys, resize with the mouse wheel or `+`/`-`, then commit or cancel. The result is flattened into the current bitmap and can be undone with Ctrl+Z. This is a useful placement mockup, but it is **not yet a Photoshop Smart Object mockup**: perspective/mesh warp, surface displacement, automatic object/material detection, non-destructive linked smart objects, masks, and lighting-aware blending are not implemented.
+
+The intended modern-feature roadmap is now explicit: (1) real layer/document integration and layered PSD I/O, (2) non-destructive adjustment layers and masks, (3) transform/perspective/warp tools for convincing mockups, (4) text/vector layers and layer styles, (5) selection/refine-edge tools, (6) content-aware/AI-assisted fill as a separately integrated capability, and (7) portable plugin/model support. These are roadmap items, not features claimed as already working.
