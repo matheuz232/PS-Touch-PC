@@ -287,7 +287,7 @@ void apply_photo_filter_command(UINT command) {
   }
   render_document();
   if(MessageBoxW(g_hwnd,L"Pré-visualização do filtro aplicada.\n\nDeseja manter o resultado?\n\nSim: confirmar e manter.\nNão: cancelar e restaurar a camada.",L"Pré-visualização do filtro",MB_YESNO|MB_ICONQUESTION)==IDNO) {
-   if(g_document->undo()) render_document();
+   if(g_document->undo()) render_document(); else MessageBoxW(g_hwnd,L"O histórico não contém uma cópia anterior suficiente para cancelar este filtro. O resultado foi mantido.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
   }
  } catch(const std::exception&) {
   // The checkpoint is created before mutation, so Undo can recover the layer
