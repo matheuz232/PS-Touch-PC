@@ -42,4 +42,8 @@ void adjust_gamma(Image& image, float gamma);
 void adjust_temperature(Image& image, float amount); // -1 cool, +1 warm
 void vignette(Image& image, float amount); // 0..1
 void pixelate(Image& image, uint32_t block_size);
+void adjust_exposure(Image& image, float stops); // exposure compensation in EV, [-8, 8]
+void adjust_hue(Image& image, float degrees); // hue rotation, [-180, 180]
+void adjust_levels(Image& image, uint8_t black_point, uint8_t white_point, float gamma = 1.0f);
+void auto_contrast(Image& image); // stretch each RGB channel to its observed range
 }
