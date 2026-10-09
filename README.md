@@ -43,7 +43,7 @@ This validates an end-to-end native image pipeline only; it is not yet the PS To
 
 ## Windows UI shell and portable distribution
 
-A first Win32 desktop shell now lives in `windows/pstouch_win32.cpp`. It uses per-monitor DPI awareness, recalculates its layout on `WM_SIZE`, scales the image preview to the available canvas, and reduces/collapses side panels on narrow windows. It provides image open/save, basic pixel filters, undo/redo, mockup placement, rotation and flips. A sibling `fonts/` directory is scanned at startup; `.ttf`, `.otf` and `.ttc` files that Windows accepts are loaded privately for the process and the successful file count is shown in the status bar. The fonts are not installed system-wide. This remains a UI integration POC, not the complete editor: the text tool, real layer controls, and native image core are not yet wired to this window. GDI+ preview formats are Windows-dependent and PSD preview is not promised.
+A first Win32 desktop shell now lives in `windows/pstouch_win32.cpp`. It uses per-monitor DPI awareness, recalculates its layout on `WM_SIZE`, scales the image preview to the available canvas, and reduces/collapses side panels on narrow windows. It provides image open/save, basic pixel filters, undo/redo, mockup placement, rotation and flips. A sibling `fonts/` directory is scanned at startup; `.ttf`, `.otf` and `.ttc` files that Windows accepts are loaded privately for the process and the successful file count is shown in the status bar. The fonts are not installed system-wide. This remains a UI integration POC, not the complete editor: the text tool now supports a basic click-to-place workflow (select Texto, click the canvas, type, Enter to commit, Esc to cancel) with white 32 px Arial text and undo; font-family/size controls, real layer controls, and native image-core integration are not yet wired to this window. GDI+ preview formats are Windows-dependent and PSD preview is not promised.
 
 Portable packaging notes are in `portable/README.txt`. The intended release is a folder containing the EXE, required redistributable runtime files and resources, with configuration/cache/log paths kept beside the application. No installer is planned. The Linux sandbox used for this iteration does not provide an MSVC/Windows GUI runtime, so the Win32 target has not been compiled or executed here.
 
@@ -58,6 +58,10 @@ The latest reliability update also fixes save-over-existing behavior for `.ptdoc
 
 The development roadmap is focused exclusively on the editor itself: (1) connect the Win32 interface to the native document/layer model and transactional history, (2) real layer panel operations, (3) layered PSD import/export, (4) non-destructive adjustment layers and masks, (5) transform/perspective/warp tools for mockup composition, (6) text/vector layers and layer styles, (7) selection/refine-edge tools, and (8) content-aware fill as a separately evaluated image-editing capability. These are roadmap items, not features claimed as already working.
 
+
+### Iteration 17 — first text placement workflow
+
+The Win32 shell now has a basic keyboard-driven text tool: select **Texto** in the left tool list, click inside the image, type text, press **Enter** to commit, or **Esc** to cancel. Committing creates an undo snapshot. This first pass renders white 32 px Arial text; font family/size selectors, text editing after placement, color controls, and true editable text layers remain future work. The `fonts/` directory is detected and loaded privately, but those custom families are not yet selectable in the text tool.
 
 ### Iteration 16 — custom font discovery
 
