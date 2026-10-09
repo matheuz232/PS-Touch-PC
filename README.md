@@ -43,7 +43,7 @@ This validates an end-to-end native image pipeline only; it is not yet the PS To
 
 ## Windows UI shell and portable distribution
 
-A first Win32 desktop shell now lives in `windows/pstouch_win32.cpp`. It uses per-monitor DPI awareness, recalculates its layout on `WM_SIZE`, scales the image preview to the available canvas, and reduces/collapses side panels on narrow windows. It provides an Open dialog and wheel zoom. This is a UI integration POC, not the complete editor: save, layer controls, editing tools, and the native image core are not yet wired to this window. GDI+ preview formats are Windows-dependent and PSD preview is not promised.
+A first Win32 desktop shell now lives in `windows/pstouch_win32.cpp`. It uses per-monitor DPI awareness, recalculates its layout on `WM_SIZE`, scales the image preview to the available canvas, and reduces/collapses side panels on narrow windows. It provides image open/save, basic pixel filters, undo/redo, mockup placement, rotation and flips. A sibling `fonts/` directory is scanned at startup; `.ttf`, `.otf` and `.ttc` files that Windows accepts are loaded privately for the process and the successful file count is shown in the status bar. The fonts are not installed system-wide. This remains a UI integration POC, not the complete editor: the text tool, real layer controls, and native image core are not yet wired to this window. GDI+ preview formats are Windows-dependent and PSD preview is not promised.
 
 Portable packaging notes are in `portable/README.txt`. The intended release is a folder containing the EXE, required redistributable runtime files and resources, with configuration/cache/log paths kept beside the application. No installer is planned. The Linux sandbox used for this iteration does not provide an MSVC/Windows GUI runtime, so the Win32 target has not been compiled or executed here.
 
@@ -57,3 +57,8 @@ The Win32 shell now has a first mockup-composition workflow: open a product/back
 The latest reliability update also fixes save-over-existing behavior for `.ptdoc` and flattened `.psd` output on Windows using the Win32 replacement API; Linux retains `rename` semantics. A regression test covers saving a project twice to the same path.
 
 The development roadmap is focused exclusively on the editor itself: (1) connect the Win32 interface to the native document/layer model and transactional history, (2) real layer panel operations, (3) layered PSD import/export, (4) non-destructive adjustment layers and masks, (5) transform/perspective/warp tools for mockup composition, (6) text/vector layers and layer styles, (7) selection/refine-edge tools, and (8) content-aware fill as a separately evaluated image-editing capability. These are roadmap items, not features claimed as already working.
+
+
+### Iteration 16 — custom font discovery
+
+The Win32 shell now creates and scans a `fonts/` directory beside the executable at startup. It attempts to load `.ttf`, `.otf` and `.ttc` font files using the Windows private-font API, without installing them system-wide, and displays the number of successfully loaded font files in the status bar. `fonts/README.txt` documents usage and licensing expectations. Restart the application after changing the folder. This prepares fonts for future text tools; the text tool itself is not yet implemented.
