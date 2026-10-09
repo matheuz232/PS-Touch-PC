@@ -19,7 +19,7 @@ This is the first platform-neutral native-core experiment derived from the APK's
 These functions are compatibility building blocks only. Pixel semantics must be compared against the original app before replacing its native extension behavior.
 
 ## Build on Windows 10/11 x64
-Install Visual Studio 2022 Build Tools with the **Desktop development with C++** workload, CMake 3.20+, libpng and libjpeg (or use vcpkg to supply both libraries).
+Install Visual Studio 2022 Build Tools with the **Desktop development with C++** workload and CMake 3.20+. The repository now declares libpng and libjpeg-turbo in `vcpkg.json`; the Windows CI workflow configures these dependencies automatically.
 
 ```powershell
 cmake -S . -B build -A x64
@@ -27,7 +27,7 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-The current test targets are console test executables, not the final application. The development sandbox used for this iteration did not have CMake installed, so the sources were compiled directly with g++ and the installed libpng/libjpeg libraries; the CMake project file is prepared for a Windows build. The next porting gate is a Windows build, layered PSD support, and representative shader/filter output validated against reference output. GPU implementation and original ActionScript UI integration are not yet included.
+The test targets are console test executables, not the final application. GitHub Actions now defines Linux/GCC and Windows/MSVC build-and-test jobs; check the Actions tab for actual runner results. Local sandbox validation is not a substitute for a successful Windows CI run. The next porting gate is a Windows build, layered PSD support, and representative shader/filter output validated against reference output. GPU implementation and original ActionScript UI integration are not yet included.
 
 ## Command-line prototype
 
@@ -53,5 +53,7 @@ The Win32 shell now includes native Save As (PNG/JPEG/BMP/TIFF encoders), graysc
 
 ### Iteration 13 — mockup composition prototype
 The Win32 shell now has a first mockup-composition workflow: open a product/background photo, choose a separate artwork image (transparent PNG recommended), reposition it with the arrow keys, resize with the mouse wheel or `+`/`-`, then commit or cancel. The result is flattened into the current bitmap and can be undone with Ctrl+Z. This is a useful placement mockup, but it is **not yet a Photoshop Smart Object mockup**: perspective/mesh warp, surface displacement, automatic object/material detection, non-destructive linked smart objects, masks, and lighting-aware blending are not implemented.
+
+The latest reliability update also fixes save-over-existing behavior for `.ptdoc` and flattened `.psd` output on Windows using the Win32 replacement API; Linux retains `rename` semantics. A regression test covers saving a project twice to the same path.
 
 The intended modern-feature roadmap is now explicit: (1) real layer/document integration and layered PSD I/O, (2) non-destructive adjustment layers and masks, (3) transform/perspective/warp tools for convincing mockups, (4) text/vector layers and layer styles, (5) selection/refine-edge tools, (6) content-aware/AI-assisted fill as a separately integrated capability, and (7) portable plugin/model support. These are roadmap items, not features claimed as already working.
