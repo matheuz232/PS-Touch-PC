@@ -88,3 +88,10 @@ The Win32 shell now initializes a native `Document` when opening an image and re
 The Windows shell now offers **Abrir proj.** and **Salvar proj.** toolbar actions for the custom `.ptdoc` format, in addition to **Ctrl+Shift+O** and **Ctrl+Shift+S**. Saving preserves the native layer stack, visibility, opacity, offsets, blend-mode metadata and RGBA pixels rather than exporting only the flattened preview. Opening a project rebuilds the composite preview from the document and seeds the native undo history. Project paths are converted from Windows wide-character paths to UTF-8 and resolved through `std::filesystem::u8path`, including Unicode filenames.
 
 The ordinary **Salvar** command remains an image export (PNG/JPEG/BMP/TIFF); use **Salvar proj.** to preserve editable layers. `.ptdoc` is this project's own format, not PSD or the original Photoshop Touch document format. CI validation for the project-dialog and Unicode-path commits is pending; the Windows GUI has not been interactively exercised in this environment.
+
+
+### Iteration 20 — transaction history and canvas rotation
+
+Editor layer mutations now record the resulting document state after each completed operation. This aligns the Win32 layer actions with the native history model so undo restores the previous state and redo restores the edited state for visibility, opacity, layer add/remove/duplicate, text placement, mockup placement, filters and transforms. Regression coverage now follows this mutate-then-checkpoint transaction order.
+
+The rotate commands now rotate the complete document canvas and all layer pixels/offsets together, swapping canvas dimensions and preserving off-canvas placement where representable. This avoids clipping wide canvases or layers merely because a single layer's dimensions changed. A regression test covers rotation of a non-square canvas, offset transformation, composite output and undo/redo. The latest CI runs for these changes must complete before the Windows build can be considered verified.
