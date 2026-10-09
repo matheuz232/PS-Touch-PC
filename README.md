@@ -97,3 +97,8 @@ The ordinary **Salvar** command exports PNG/JPEG/BMP/TIFF or PSD; PSD export pre
 Editor layer mutations now record the resulting document state after each completed operation. This aligns the Win32 layer actions with the native history model so undo restores the previous state and redo restores the edited state for visibility, opacity, layer add/remove/duplicate, text placement, mockup placement, filters and transforms. Regression coverage now follows this mutate-then-checkpoint transaction order.
 
 The rotate commands now rotate the complete document canvas and all layer pixels/offsets together, swapping canvas dimensions and preserving off-canvas placement where representable. This avoids clipping wide canvases or layers merely because a single layer's dimensions changed. A regression test covers rotation of a non-square canvas, offset transformation, composite output and undo/redo. The latest CI runs for these changes must complete before the Windows build can be considered verified.
+
+
+### Iteration 21 — Win32 filter menu and expanded tonal controls
+
+The Windows shell now exposes the 100 photo-grade presets and native image operations from a **Filtros** popup menu. The core adds exposure compensation in EV, HSV hue rotation, black/white-point and gamma levels, and per-channel automatic contrast. These operations preserve alpha; hue rotation leaves neutral gray pixels neutral, levels validate the input range, and exposure is bounded to avoid unbounded values. The UI exposes practical preset actions for each operation while the core API accepts parameters for future dialogs/sliders. CI must pass on both Linux and Windows before this iteration is considered verified.
