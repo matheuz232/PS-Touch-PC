@@ -117,3 +117,8 @@ Added a vibrance adjustment that increases or reduces saturation selectively: al
 ### Iteration 24 — luminance histogram equalization
 
 Added global histogram equalization based on perceptual luminance. It expands tonal separation while scaling RGB together to reduce hue shifts, preserves alpha, and safely leaves empty or constant-luminance images unchanged. The Win32 filter menu exposes the operation, with regression coverage for tonal ordering, alpha preservation, and constant-image stability.
+
+
+### Iteration 25 — selectable adjustment strengths
+
+The Windows filter menu now exposes multiple selective-vibrance strengths (from -100% to +100%) and exposure compensation presets (-2 to +2 EV) instead of only a single fixed value for each operation. The options call the existing validated core functions and retain the standard document checkpoint/undo path. This provides practical parameter selection without allocating preview copies, keeping memory overhead low on older PCs; a live slider and non-destructive preview remain future UI work.
