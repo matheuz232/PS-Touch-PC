@@ -158,9 +158,13 @@ void remove_selected_layer(){
 }
 void rotate_image(bool clockwise){
  if(!g_document||g_document->layers().empty())return;
- auto& layer=g_document->mutable_layers()[g_selected_layer];
- layer.image=clockwise?pstouch::rotate_90_clockwise(layer.image):pstouch::rotate_90_counterclockwise(layer.image);
- g_document->checkpoint("Rotate layer"); render_document();
+ try {
+  g_document->rotate_canvas(clockwise);
+  g_document->checkpoint(clockwise?"Rotate canvas clockwise":"Rotate canvas counterclockwise");
+  render_document();
+ } catch(const std::exception&) {
+  MessageBoxW(g_hwnd,L"Não foi possível girar o documento sem perder conteúdo.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
+ }
 }
 void flip_image(bool horizontal){
  if(!g_document||g_document->layers().empty())return;
