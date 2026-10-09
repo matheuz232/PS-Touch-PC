@@ -57,3 +57,10 @@ Added a Win32 mockup-placement prototype: user opens a base/product photo, impor
 - Added `vcpkg.json` for libpng/libjpeg-turbo and `.github/workflows/native-build.yml` with Linux/GCC and Windows x64/MSVC build/test jobs, including the Win32 application target on Windows.
 - Local verification: all seven native test executables compiled with GCC using `-Wall -Wextra -Wpedantic -Wconversion` and passed, including the new overwrite regression.
 - CI status is pending an actual GitHub Actions run; Windows/MSVC compilation and GUI execution are not claimed as passed from this sandbox.
+
+
+## Iteration 15 — editor-first scope and transform tools
+- Removed the desktop Photoshop plugin compatibility document; plugin runtimes, plugin managers, CEP/UXP/JSX and native .8bf support are no longer part of the project scope.
+- Refocused the README roadmap on the editor's own document model, layers, PSD I/O, masks, transforms and selection tools.
+- Added Win32 toolbar commands for 90-degree rotation in both directions and horizontal/vertical flipping. Each transform snapshots the previous image so Ctrl+Z can undo it; transform controls are hidden while mockup placement is active to preserve the Apply/Cancel interaction.
+- These new GUI commands are committed but still require Windows/MSVC CI verification. The Win32 shell remains separate from the native document/layer core; wiring that integration is the next major engineering task.
