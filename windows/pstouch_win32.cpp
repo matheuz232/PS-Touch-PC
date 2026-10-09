@@ -188,7 +188,11 @@ void apply_photo_filter_command(UINT command) {
   return;
  }
  auto& image=g_document->mutable_layers()[g_selected_layer].image;
+ std::unique_ptr<pstouch::Image> rollback;
  try {
+  // Keep a private copy of the edited layer so exceptions cannot leave
+  // partially processed pixels or undo an unrelated earlier edit.
+  rollback=std::make_unique<pstouch::Image>(image);
   if(command>=2000 && command<2100) {
    const auto preset=static_cast<pstouch::PhotoPreset>(command-2000);
    pstouch::apply_photo_preset(image,preset);
@@ -290,15 +294,20 @@ void apply_photo_filter_command(UINT command) {
    if(g_document->undo()) render_document(); else MessageBoxW(g_hwnd,L"O histórico não contém uma cópia anterior suficiente para cancelar este filtro. O resultado foi mantido.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
   }
  } catch(const std::exception&) {
-  // Filters can fail after mutating some pixels. The most recent completed
-  // checkpoint is the pre-filter state, so restore it rather than leaving a
-  // partially edited layer visible.
-  const bool restored=g_document->undo();
+  // Undo would rewind the previous completed edit, not necessarily the state
+  // immediately before this filter. Restore the explicit layer backup instead.
+  bool restored=false;
+  if(rollback && g_selected_layer<g_document->mutable_layers().size()) {
+   try {
+    g_document->mutable_layers()[g_selected_layer].image=std::move(*rollback);
+    restored=true;
+   } catch(...) {}
+  }
   render_document();
   if(restored) {
-   MessageBoxW(g_hwnd,L"O filtro falhou e a camada foi restaurada ao estado anterior.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
+   MessageBoxW(g_hwnd,L"O filtro falhou e a camada foi restaurada exatamente ao estado anterior.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
   } else {
-   MessageBoxW(g_hwnd,L"O filtro falhou e não há um ponto de restauração disponível. Verifique o documento antes de salvar.",L"PS Touch PC",MB_OK|MB_ICONERROR);
+   MessageBoxW(g_hwnd,L"O filtro falhou e a restauração automática não foi concluída. Verifique o documento antes de salvar.",L"PS Touch PC",MB_OK|MB_ICONERROR);
   }
  }
 }
