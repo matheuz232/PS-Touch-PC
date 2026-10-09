@@ -98,8 +98,8 @@ void Document::restore(const State&s){width_=s.width;height_=s.height;name_=s.na
 void Document::checkpoint(std::string label){
     constexpr uint64_t maxHistoryBytes=128ULL*1024ULL*1024ULL;
     if(history_cursor_<history_.size())history_.erase(history_.begin()+static_cast<std::ptrdiff_t>(history_cursor_),history_.end());
-    State incoming{label,width_,height_,name_,layers_};
-    const uint64_t incomingBytes=estimate_state_bytes(incoming);
+    uint64_t incomingBytes=sizeof(State)+label.size()+name_.size();
+    for(const auto& layer:layers_){const uint64_t bytes=static_cast<uint64_t>(layer.image.width())*layer.image.height()*sizeof(Pixel);if(bytes>std::numeric_limits<uint64_t>::max()-incomingBytes){incomingBytes=std::numeric_limits<uint64_t>::max();break;}incomingBytes+=bytes+sizeof(Layer)+layer.name.size();}
     if(incomingBytes>maxHistoryBytes){history_.clear();history_cursor_=0;return;}
     uint64_t retainedBytes=0;for(const auto& state:history_)retainedBytes+=estimate_state_bytes(state);
     while(!history_.empty()&&retainedBytes>maxHistoryBytes-incomingBytes){retainedBytes-=std::min(retainedBytes,estimate_state_bytes(history_.front()));history_.erase(history_.begin());if(history_cursor_>0)--history_cursor_;}
