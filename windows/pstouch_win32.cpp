@@ -218,6 +218,10 @@ void apply_photo_filter_command(UINT command) {
      constexpr float strengths[]={-1.0f,-0.75f,-0.5f,-0.25f,0.25f,0.5f,0.75f,1.0f};
      pstouch::adjust_vibrance(image,strengths[command-1100]); break;
     }
+    case 1120: case 1121: case 1122: case 1123: case 1124: case 1125: case 1126: case 1127: {
+     constexpr float saturation_values[]={-1.0f,-0.75f,-0.5f,-0.25f,0.25f,0.5f,0.75f,1.0f};
+     pstouch::adjust_saturation(image,saturation_values[command-1120]); break;
+    }
     case 1110: case 1111: case 1112: case 1113: case 1114: case 1115: {
      constexpr float stops[]={-2.0f,-1.0f,-0.5f,0.5f,1.0f,2.0f};
      pstouch::adjust_exposure(image,stops[command-1110]); break;
@@ -261,6 +265,12 @@ void show_filter_menu(HWND hwnd,int x,int y) {
   constexpr float exposure_values[]={-2.0f,-1.0f,-0.5f,0.5f,1.0f,2.0f};
   for(UINT i=0;i<6;i++) { wchar_t ev_text[48]{}; swprintf_s(ev_text,L"Exposição %+.1f EV",exposure_values[i]); AppendMenuW(exposure,MF_STRING,1110+i,ev_text); }
   AppendMenuW(menu,MF_POPUP,(UINT_PTR)exposure,L"Exposição");
+ }
+ HMENU saturation=CreatePopupMenu();
+ if(saturation) {
+  constexpr int saturation_values[]={-100,-75,-50,-25,25,50,75,100};
+  for(UINT i=0;i<8;i++) { wchar_t sat_text[48]{}; swprintf_s(sat_text,L"Saturação %s%d%%",saturation_values[i]>0?L"+":L"",saturation_values[i]); AppendMenuW(saturation,MF_STRING,1120+i,sat_text); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)saturation,L"Saturação");
  }
  AppendMenuW(menu,MF_STRING,1012,L"Matiz +30°");
  AppendMenuW(menu,MF_STRING,1013,L"Níveis (predefinição)");
