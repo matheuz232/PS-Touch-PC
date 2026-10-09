@@ -79,8 +79,13 @@ Image resample_bilinear(const Image& src, uint32_t width, uint32_t height) {
             const float fx = std::clamp((static_cast<float>(x) + 0.5f) * static_cast<float>(src.width()) / static_cast<float>(width) - 0.5f, 0.0f, static_cast<float>(src.width()-1));
             const uint32_t x0 = static_cast<uint32_t>(fx), x1 = std::min(x0 + 1, src.width()-1); const float tx = fx-static_cast<float>(x0);
             const Pixel p00=src.at(x0,y0), p10=src.at(x1,y0), p01=src.at(x0,y1), p11=src.at(x1,y1);
-            auto channel = [&](uint8_t Pixel::*m) { const float a=p00.*m+(p10.*m-p00.*m)*tx, b=p01.*m+(p11.*m-p01.*m)*tx; return clamp_byte(a+(b-a)*ty); };
-            out.at(x,y) = {channel(&Pixel::r),channel(&Pixel::g),channel(&Pixel::b),channel(&Pixel::a)};
+            const float w00=(1.0f-tx)*(1.0f-ty),w10=tx*(1.0f-ty),w01=(1.0f-tx)*ty,w11=tx*ty;
+            const float alpha=p00.a*w00+p10.a*w10+p01.a*w01+p11.a*w11;
+            auto premultiplied = [&](uint8_t Pixel::*m) {
+                const float value=(p00.*m)*p00.a*w00+(p10.*m)*p10.a*w10+(p01.*m)*p01.a*w01+(p11.*m)*p11.a*w11;
+                return alpha>0.0f?clamp_byte(value/alpha):uint8_t{0};
+            };
+            out.at(x,y) = {premultiplied(&Pixel::r),premultiplied(&Pixel::g),premultiplied(&Pixel::b),clamp_byte(alpha)};
         }
     }
     return out;
