@@ -48,4 +48,5 @@ void adjust_levels(Image& image, uint8_t black_point, uint8_t white_point, float
 void auto_contrast(Image& image); // stretch each RGB channel to its observed range
 void adjust_shadows_highlights(Image& image, float shadows, float highlights); // each in [-1, 1]
 void color_balance(Image& image, float red, float green, float blue); // channel gains in [-1, 1]
+void adjust_vibrance(Image& image, float amount); // selective saturation, amount in [-1, 1]
 }
