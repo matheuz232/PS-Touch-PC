@@ -2,6 +2,7 @@
 #include <cassert>
 #include <iostream>
 #include <stdexcept>
+#include <cstdint>
 using namespace pstouch;
 int main() {
     Image transparent(1,1,{200,100,50,0});
@@ -13,6 +14,10 @@ int main() {
     Image dst(2,2,{0,0,255,255}); Image src(1,1,{255,0,0,128}); source_over(dst,src,0,0);
     assert(dst.at(0,0).r==128 && dst.at(0,0).b==127 && dst.at(0,0).a==255);
     source_over(dst,src,-1,-1); assert(dst.at(1,1).b==255);
+    Image corner(2,2,{0,255,0,255});source_over(dst,corner,1,1);
+    assert(dst.at(1,1).g==255&&dst.at(1,1).r==0);
+    const auto beforeOffscreen=dst.pixels();source_over(dst,corner,INT32_MAX,INT32_MAX);
+    assert(dst.pixels()==beforeOffscreen);
     Image ramp(2,1,{0,0,0,255}); ramp.at(1,0)={100,100,100,255};
     Image mid=resample_bilinear(ramp,3,1); assert(mid.width()==3 && mid.at(1,0).r==50);
     Image unchanged(1,1,{100,120,140,255}); brightness_contrast(unchanged,0.0f,0.0f);
