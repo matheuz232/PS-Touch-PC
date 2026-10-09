@@ -342,6 +342,7 @@ void show_filter_menu(HWND hwnd,int x,int y) {
   constexpr int values[]={15,30,45,60,75,100};
   for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Vinheta %d%%",values[i]); AppendMenuW(vignette,MF_STRING,1170+i,label); }
   AppendMenuW(menu,MF_POPUP,(UINT_PTR)vignette,L"Vinheta");
+ }
  HMENU pixelate=CreatePopupMenu();
  if(pixelate) {
   constexpr int values[]={2,4,8,12,16,24};
