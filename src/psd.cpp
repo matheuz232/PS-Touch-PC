@@ -50,7 +50,7 @@ void save_psd_layers(const Document& document,const std::string& path){
   put32(records,static_cast<uint32_t>(l.y));put32(records,static_cast<uint32_t>(l.x));put32(records,static_cast<uint32_t>(bottom));put32(records,static_cast<uint32_t>(right));
   put16(records,4);
   for(int16_t id : {-1,0,1,2}){put16(records,static_cast<uint16_t>(id));const uint64_t len=2ULL+static_cast<uint64_t>(l.image.width())*l.image.height();if(len>0xffffffffULL)throw std::length_error("PSD layer channel too large");put32(records,static_cast<uint32_t>(len));}
-  records.write("8BIM",4);records.write("norm",4);records.put(static_cast<char>(l.opacity));records.put(0);records.put(static_cast<char>(l.visible?0:2));records.put(0);
+  records.write("8BIM",4);const char* blendKey="norm";switch(l.blend){case BlendMode::Normal:blendKey="norm";break;case BlendMode::Darken:blendKey="dark";break;case BlendMode::Multiply:blendKey="mul ";break;case BlendMode::Lighten:blendKey="lite";break;case BlendMode::Screen:blendKey="scrn";break;case BlendMode::Add:blendKey="lddg";break;case BlendMode::Overlay:blendKey="over";break;case BlendMode::Difference:blendKey="diff";break;case BlendMode::Subtract:throw std::invalid_argument("PSD export does not support the custom Subtract blend mode");}records.write(blendKey,4);records.put(static_cast<char>(l.opacity));records.put(0);records.put(static_cast<char>(l.visible?0:2));records.put(0);
   std::ostringstream extra(std::ios::out|std::ios::binary);put32(extra,0);put32(extra,0);
   const uint8_t nameLen=static_cast<uint8_t>(l.name.size());extra.put(static_cast<char>(nameLen));extra.write(l.name.data(),nameLen);
   const size_t nameBytes=1+l.name.size();for(size_t n=nameBytes;n%4;++n)extra.put(0);
