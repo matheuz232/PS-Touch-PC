@@ -19,8 +19,9 @@ constexpr COLORREF BG=RGB(43,43,43), PANEL=RGB(52,52,52), PANEL2=RGB(37,37,37), 
 HWND g_hwnd{}; ULONG_PTR g_gdiplus{}; std::unique_ptr<Bitmap> g_image; std::vector<std::wstring> g_loaded_font_paths; std::wstring g_path=L"Nenhuma imagem aberta"; float g_zoom=1.0f; bool g_showLayers=true, g_showTools=true; std::vector<std::unique_ptr<Bitmap>> g_undo, g_redo; std::unique_ptr<Bitmap> g_mockup_design; float g_mockup_scale=0.55f; int g_mockup_dx=0,g_mockup_dy=0;
 std::filesystem::path executable_directory() {
  wchar_t buffer[32768]{};
- DWORD length=GetModuleFileNameW(nullptr,buffer,(DWORD)std::size(buffer));
- if(length==0 || length>=std::size(buffer)) return std::filesystem::current_path();
+ constexpr DWORD buffer_count=(DWORD)(sizeof(buffer)/sizeof(buffer[0]));
+ DWORD length=GetModuleFileNameW(nullptr,buffer,buffer_count);
+ if(length==0 || length>=buffer_count) return std::filesystem::current_path();
  return std::filesystem::path(buffer).parent_path();
 }
 void load_custom_fonts() {
@@ -87,7 +88,7 @@ void draw_ui(HDC dc, RECT c) {
  int w=c.right,h=c.bottom; fill(dc,c,BG);
  // Top menu and command bar remain fixed-height; content below is fully responsive.
  fill(dc,{0,0,w,34},PANEL2); label(dc,14,8,L"PS Touch",RGB(245,245,245),16,true); label(dc,110,10,L"Arquivo   Editar   Imagem   Camada   Selecionar   Filtro   Exibir   |   F3 Ferramentas   F4 Camadas",TEXT,13);
- fill(dc,{0,34,w,76},PANEL); button(dc,{12,43,86,67},L"Abrir",true); button(dc,{94,43,168,67},L"Salvar"); button(dc,{176,43,252,67},L"Desfazer"); button(dc,{260,43,338,67},L"Refazer"); button(dc,{346,43,430,67},L"Cinza"); button(dc,{438,43,522,67},L"Sépia"); button(dc,{530,43,614,67},L"Mockup",g_mockup_design!=nullptr); if(g_mockup_design){button(dc,{622,43,704,67},L"Aplicar",true);button(dc,{712,43,794,67},L"Cancelar");label(dc,804,49,L"Setas mover · +/- tamanho · Enter aplicar",MUTED,11);}else{button(dc,{622,43,696,67},L"Girar ↶");button(dc,{702,43,776,67},L"Girar ↷");button(dc,{782,43,856,67},L"Esp. H");button(dc,{862,43,936,67},L"Esp. V");}else{label(dc,626,49,L"Zoom",MUTED,12);label(dc,670,49,std::to_wstring((int)(g_zoom*100))+L"%",TEXT,13,true);label(dc,std::max(960,w-260),49,L"Layout adaptável",MUTED,12);}
+ fill(dc,{0,34,w,76},PANEL); button(dc,{12,43,86,67},L"Abrir",true); button(dc,{94,43,168,67},L"Salvar"); button(dc,{176,43,252,67},L"Desfazer"); button(dc,{260,43,338,67},L"Refazer"); button(dc,{346,43,430,67},L"Cinza"); button(dc,{438,43,522,67},L"Sépia"); button(dc,{530,43,614,67},L"Mockup",g_mockup_design!=nullptr); if(g_mockup_design){button(dc,{622,43,704,67},L"Aplicar",true);button(dc,{712,43,794,67},L"Cancelar");label(dc,804,49,L"Setas mover · +/- tamanho · Enter aplicar",MUTED,11);}else{button(dc,{622,43,696,67},L"Girar ↶");button(dc,{702,43,776,67},L"Girar ↷");button(dc,{782,43,856,67},L"Esp. H");button(dc,{862,43,936,67},L"Esp. V");}label(dc,std::max(960,w-260),49,L"Layout adaptável",MUTED,12);
  const int top=76,bottom=26; fill(dc,{0,h-bottom,w,h},PANEL2); label(dc,12,h-bottom+6,g_path,MUTED,11); label(dc,std::max(250,w-250),h-bottom+6,L"Fontes detectadas: "+std::to_wstring(g_loaded_font_paths.size()),MUTED,11);
  int usableH=std::max(0,h-top-bottom); bool compact=w<860; bool tiny=w<570; int left=g_showTools?(tiny?0:(compact?44:190)):0; int right=g_showLayers?(tiny?0:(compact?0:230)):0; if(w-left-right<160){right=0;left= g_showTools?36:0;}
  if(left>0){fill(dc,{0,top,left,h-bottom},PANEL2); if(left>50){label(dc,14,top+14,L"Ferramentas",TEXT,13,true); const wchar_t* tools[]={L"Mover",L"Seleção",L"Laço",L"Pincel",L"Borracha",L"Preenchimento",L"Texto",L"Cortar",L"Conta-gotas",L"Mão"}; for(int i=0;i<10;i++){int yy=top+44+i*35; RECT r{10,yy,left-10,yy+28}; button(dc,r,tools[i],i==3);} } else {for(int i=0;i<8;i++){int yy=top+12+i*42; RECT r{7,yy,left-7,yy+30}; fill(dc,r,i==3?ACCENT:PANEL); label(dc,14,yy+7,std::to_wstring(i+1),TEXT,13,true);}} }
