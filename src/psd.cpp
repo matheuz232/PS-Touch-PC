@@ -1,4 +1,6 @@
 #include "pstouch/psd.hpp"
+#include "pstouch/document.hpp"
+#include <sstream>
 #include <cstdio>
 #include <algorithm>
 #include <array>
@@ -32,6 +34,42 @@ uint32_t read_be32(std::istream& i){unsigned char b[4]{};i.read(reinterpret_cast
 void skip_bytes(std::istream& i,uint32_t n){i.seekg(static_cast<std::streamoff>(n),std::ios::cur);if(!i)throw std::runtime_error("truncated PSD section");}
 void decode_packbits(const std::vector<uint8_t>& src,size_t& pos,size_t end,uint8_t* dst,size_t expected){size_t out=0;while(pos<end&&out<expected){int8_t n=static_cast<int8_t>(src[pos++]);if(n>=0){size_t count=static_cast<size_t>(n)+1;if(count>end-pos||count>expected-out)throw std::runtime_error("invalid PSD PackBits literal run");std::copy_n(src.data()+pos,count,dst+out);pos+=count;out+=count;}else if(n!=-128){size_t count=static_cast<size_t>(1-static_cast<int>(n));if(pos>=end||count>expected-out)throw std::runtime_error("invalid PSD PackBits repeat run");std::fill_n(dst+out,count,src[pos++]);out+=count;}}if(out!=expected)throw std::runtime_error("PSD PackBits row length mismatch");}
 }
+void save_psd_layers(const Document& document,const std::string& path){
+ const auto& layers=document.layers();
+ if(layers.empty()||layers.size()>16000)throw std::invalid_argument("layered PSD requires 1..16000 layers");
+ if(document.width()>30000||document.height()>30000)throw std::length_error("PSD dimensions exceed version-1 limits");
+ auto put16=[](std::ostream& o,uint16_t v){be16(o,v);};
+ auto put32=[](std::ostream& o,uint32_t v){be32(o,v);};
+ std::ostringstream info(std::ios::binary),records(std::ios::binary),channels(std::ios::binary);
+ put16(info,static_cast<uint16_t>(layers.size()));
+ for(auto it=layers.rbegin();it!=layers.rend();++it){
+  const auto& l=*it;
+  const int64_t right=static_cast<int64_t>(l.x)+l.image.width(),bottom=static_cast<int64_t>(l.y)+l.image.height();
+  if(l.x<0||l.y<0||right>document.width()||bottom>document.height())throw std::invalid_argument("PSD layer bounds must fit inside canvas");
+  if(l.name.size()>255)throw std::length_error("PSD layer names are limited to 255 UTF-8 bytes");
+  put32(records,static_cast<uint32_t>(l.y));put32(records,static_cast<uint32_t>(l.x));put32(records,static_cast<uint32_t>(bottom));put32(records,static_cast<uint32_t>(right));
+  put16(records,4);
+  for(int16_t id : {-1,0,1,2}){put16(records,static_cast<uint16_t>(id));const uint64_t len=2ULL+static_cast<uint64_t>(l.image.width())*l.image.height();if(len>0xffffffffULL)throw std::length_error("PSD layer channel too large");put32(records,static_cast<uint32_t>(len));}
+  records.write("8BIM",4);records.write("norm",4);records.put(static_cast<char>(l.opacity));records.put(0);records.put(static_cast<char>(l.visible?0:2));records.put(0);
+  std::ostringstream extra(std::ios::binary);put32(extra,0);put32(extra,0);
+  const uint8_t nameLen=static_cast<uint8_t>(l.name.size());extra.put(static_cast<char>(nameLen));extra.write(l.name.data(),nameLen);
+  const size_t nameBytes=1+l.name.size();for(size_t n=nameBytes;n%4;++n)extra.put(0);
+  const auto extraData=extra.str();put32(records,static_cast<uint32_t>(extraData.size()));records.write(extraData.data(),static_cast<std::streamsize>(extraData.size()));
+  for(int channel : {-1,0,1,2}){put16(channels,0);for(const auto& p:l.image.pixels()){const uint8_t v=channel==-1?p.a:channel==0?p.r:channel==1?p.g:p.b;channels.put(static_cast<char>(v));}}
+ }
+ const auto rec=records.str(),ch=channels.str();info.write(rec.data(),static_cast<std::streamsize>(rec.size()));info.write(ch.data(),static_cast<std::streamsize>(ch.size()));
+ if(!info)throw std::runtime_error("could not assemble PSD layer information");
+ std::ostringstream layerMask(std::ios::binary);const auto li=info.str();put32(layerMask,static_cast<uint32_t>(li.size()+4));put32(layerMask,static_cast<uint32_t>(li.size()));layerMask.write(li.data(),static_cast<std::streamsize>(li.size()));put32(layerMask,0);
+ const auto lm=layerMask.str();if(lm.size()>0xffffffffULL)throw std::length_error("PSD layer information too large");
+ const Image merged=document.composite();const auto destination=std::filesystem::u8path(path);auto tmp=destination;tmp+=".tmp";
+ try{
+  std::ofstream o(tmp,std::ios::binary|std::ios::trunc);if(!o)throw std::runtime_error("cannot create PSD file");
+  o.write("8BPS",4);put16(o,1);char reserved[6]={};o.write(reserved,6);put16(o,4);put32(o,document.height());put32(o,document.width());put16(o,8);put16(o,3);put32(o,0);put32(o,0);put32(o,static_cast<uint32_t>(lm.size()));o.write(lm.data(),static_cast<std::streamsize>(lm.size()));put16(o,0);
+  for(int channel=0;channel<4;++channel)for(const auto& p:merged.pixels())o.put(static_cast<char>(channel==0?p.r:channel==1?p.g:channel==2?p.b:p.a));
+  o.flush();if(!o)throw std::runtime_error("PSD write failed");o.close();if(!replace_file(tmp,destination))throw std::runtime_error("could not finalize PSD file");
+ }catch(...){std::error_code ignored;std::filesystem::remove(tmp,ignored);throw;}
+}
+
 Image load_psd_flattened(const std::string& path){
  std::ifstream i(std::filesystem::u8path(path),std::ios::binary);if(!i)throw std::runtime_error("cannot open PSD file");char sig[4]{};i.read(sig,4);if(!i||std::string(sig,4)!="8BPS")throw std::runtime_error("not a PSD file");if(read_be16(i)!=1)throw std::runtime_error("only PSD version 1 is supported");char reserved[6];i.read(reserved,6);if(!i)throw std::runtime_error("truncated PSD header");uint16_t channels=read_be16(i);uint32_t height=read_be32(i),width=read_be32(i);uint16_t depth=read_be16(i),mode=read_be16(i);if(!width||!height||width>30000||height>30000||static_cast<uint64_t>(width)*height>100000000ULL)throw std::runtime_error("PSD dimensions exceed safety limits");if(depth!=8||mode!=3||(channels!=3&&channels!=4))throw std::runtime_error("PSD import supports only 8-bit RGB/RGBA");skip_bytes(i,read_be32(i));skip_bytes(i,read_be32(i));skip_bytes(i,read_be32(i));uint16_t compression=read_be16(i);if(compression>1)throw std::runtime_error("unsupported PSD compression");const size_t pixels=static_cast<size_t>(width)*height;std::vector<std::vector<uint8_t>> planes(channels,std::vector<uint8_t>(pixels));
  if(compression==0){for(auto& plane:planes){i.read(reinterpret_cast<char*>(plane.data()),static_cast<std::streamsize>(plane.size()));if(!i)throw std::runtime_error("truncated raw PSD pixel data");}}
