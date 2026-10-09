@@ -13,5 +13,14 @@ int main(){
  auto sat=a;pstouch::adjust_saturation(sat,-1);for(const auto& p:sat.pixels())assert(p.r==p.g&&p.g==p.b);bad=false;try{pstouch::adjust_saturation(sat,NAN);}catch(const std::invalid_argument&){bad=true;}assert(bad);
  pstouch::Image inverted(2,1,{10,100,250,128});inverted.at(1,0)={0,127,255,0};pstouch::invert_colors(inverted);assert(inverted.at(0,0).r==245&&inverted.at(0,0).g==155&&inverted.at(0,0).b==5&&inverted.at(0,0).a==128);assert(inverted.at(1,0).r==255&&inverted.at(1,0).g==128&&inverted.at(1,0).b==0&&inverted.at(1,0).a==0);
  pstouch::Image poster(3,1,{0,63,255,255});poster.at(1,0)={64,127,192,100};pstouch::posterize(poster,2);assert(poster.at(0,0).r==0&&poster.at(0,0).g==0&&poster.at(0,0).b==255);assert(poster.at(1,0).r==0&&poster.at(1,0).g==0&&poster.at(1,0).b==255&&poster.at(1,0).a==100);pstouch::posterize(poster,256);assert(poster.at(1,0).a==100);bad=false;try{pstouch::posterize(poster,1);}catch(const std::invalid_argument&){bad=true;}assert(bad);
- std::cout<<"PASS: crop, transforms, color filters, posterize, invert and alpha preservation\\n";
+ pstouch::Image blur(3,1,{0,0,0,255});blur.at(1,0)={255,255,255,255};pstouch::gaussian_blur(blur,1.0f);assert(blur.at(1,0).r<255&&blur.at(1,0).r>blur.at(0,0).r);
+ pstouch::Image sharp(3,1,{100,100,100,255});sharp.at(1,0)={150,150,150,255};pstouch::sharpen(sharp,1.0f);assert(sharp.at(1,0).r>=150);
+ pstouch::Image edges(3,3,{0,0,0,255});for(uint32_t y=0;y<3;++y)edges.at(2,y)={255,255,255,255};pstouch::edge_detect(edges);assert(edges.at(1,1).r>0&&edges.at(1,1).r==edges.at(1,1).g);
+ pstouch::Image binary(2,1,{30,30,30,255});binary.at(1,0)={200,200,200,64};pstouch::threshold(binary,128);assert(binary.at(0,0).r==0&&binary.at(1,0).r==255&&binary.at(1,0).a==64);
+ pstouch::Image gamma(1,1,{64,128,200,80});pstouch::adjust_gamma(gamma,2.0f);assert(gamma.at(0,0).r>64&&gamma.at(0,0).a==80);
+ pstouch::Image temp(1,1,{100,100,100,77});pstouch::adjust_temperature(temp,1.0f);assert(temp.at(0,0).r>100&&temp.at(0,0).b<100&&temp.at(0,0).a==77);
+ pstouch::Image shade(3,3,{200,200,200,255});pstouch::vignette(shade,1.0f);assert(shade.at(1,1).r>shade.at(0,0).r);
+ pstouch::Image blocks(2,1,{0,0,0,255});blocks.at(1,0)={200,100,50,255};pstouch::pixelate(blocks,2);assert(blocks.at(0,0).r==100&&blocks.at(1,0).r==100);
+ bad=false;try{pstouch::gaussian_blur(blur,0.0f);}catch(const std::invalid_argument&){bad=true;}assert(bad);bad=false;try{pstouch::pixelate(blocks,0);}catch(const std::invalid_argument&){bad=true;}assert(bad);
+ std::cout<<"PASS: transforms, color filters, 100% core ops, blur, sharpen, edges, gamma, temperature, vignette and pixelation\\n";
 }
