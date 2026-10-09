@@ -269,6 +269,18 @@ void apply_photo_filter_command(UINT command) {
      const size_t i=command-1210;
      pstouch::color_balance(image,red[i],green[i],blue[i]); break;
     }
+    case 1220: case 1221: case 1222: case 1223: case 1224: case 1225: {
+     constexpr uint16_t levels[]={2,3,4,6,8,16};
+     pstouch::posterize(image,levels[command-1220]); break;
+    }
+    case 1230: case 1231: case 1232: case 1233: case 1234: case 1235: {
+     constexpr uint32_t blocks[]={2,4,8,12,16,24};
+     pstouch::pixelate(image,blocks[command-1230]); break;
+    }
+    case 1240: case 1241: case 1242: case 1243: case 1244: case 1245: {
+     constexpr uint8_t cutoffs[]={32,64,96,128,160,192};
+     pstouch::threshold(image,cutoffs[command-1240]); break;
+    }
     default: return;
    }
    g_document->checkpoint("Apply image filter");
@@ -294,7 +306,12 @@ void show_filter_menu(HWND hwnd,int x,int y) {
  }
  AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
  AppendMenuW(menu,MF_STRING,1001,L"Inverter cores");
- AppendMenuW(menu,MF_STRING,1002,L"Posterizar (6 níveis)");
+ HMENU posterize=CreatePopupMenu();
+ if(posterize) {
+  constexpr int values[]={2,3,4,6,8,16};
+  for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Posterização: %d níveis",values[i]); AppendMenuW(posterize,MF_STRING,1220+i,label); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)posterize,L"Posterizar");
+ }
  HMENU blur=CreatePopupMenu();
  if(blur) {
   constexpr float values[]={0.5f,1.0f,2.0f,3.0f,5.0f};
@@ -325,8 +342,18 @@ void show_filter_menu(HWND hwnd,int x,int y) {
   constexpr int values[]={15,30,45,60,75,100};
   for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Vinheta %d%%",values[i]); AppendMenuW(vignette,MF_STRING,1170+i,label); }
   AppendMenuW(menu,MF_POPUP,(UINT_PTR)vignette,L"Vinheta");
- AppendMenuW(menu,MF_STRING,1009,L"Pixelizar");
- AppendMenuW(menu,MF_STRING,1010,L"Preto e branco (limiar)");
+ HMENU pixelate=CreatePopupMenu();
+ if(pixelate) {
+  constexpr int values[]={2,4,8,12,16,24};
+  for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Blocos de %d px",values[i]); AppendMenuW(pixelate,MF_STRING,1230+i,label); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)pixelate,L"Pixelizar");
+ }
+ HMENU threshold=CreatePopupMenu();
+ if(threshold) {
+  constexpr int values[]={32,64,96,128,160,192};
+  for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Limiar %d",values[i]); AppendMenuW(threshold,MF_STRING,1240+i,label); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)threshold,L"Preto e branco (limiar)");
+ }
  HMENU exposure=CreatePopupMenu();
  if(exposure) {
   constexpr float exposure_values[]={-2.0f,-1.0f,-0.5f,0.5f,1.0f,2.0f};
