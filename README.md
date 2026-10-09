@@ -13,7 +13,8 @@ This is the first platform-neutral native-core experiment derived from the APK's
 - Low-memory performance work: layer compositing clips each layer to the visible canvas before iterating, skips off-canvas pixels, and uses contiguous row-major pixel access to avoid per-pixel bounds checks. This reduces unnecessary CPU work for partially visible or oversized layers.
 - Alpha premultiplication/unpremultiplication.
 - Straight-alpha source-over compositing.
-- Bilinear image resampling, crop, horizontal/vertical flip, 90-degree rotation, grayscale, sepia, and saturation adjustment.
+- Bilinear image resampling, crop, horizontal/vertical flip, 90-degree rotation, grayscale, sepia, saturation adjustment, color inversion, and configurable posterization.
+- 100 built-in photo-grade presets across ten families (Natural, Warm, Cool, Vintage, Cinema, Fade, Vivid, Matte, Teal Orange, and Monochrome), each with ten strengths. Presets run on the CPU, preserve alpha, and expose names through the native API.
 - Brightness/contrast primitive ported from the formula in the APK’s `contrastbrightness.fs` shader (still requires GPU-vs-CPU pixel-parity validation).
 - Unit tests for the primitives above.
 
