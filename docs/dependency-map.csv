@@ -1,0 +1,14 @@
+Subsystem,Original evidence,Windows x64 action,Priority,Status
+App startup,Adobe AIR 16 descriptor + Android AppEntry,Replace Android lifecycle and AIR bootstrap,High,Analyzed
+ActionScript application,1192 scripts exported from TTPixel.swf,Port modules incrementally using decompiled behavior as reference,High,Inventory complete
+GPU filter pipeline,ANE context gl + GLES2/EGL imports,Port GL context/filter/texture/readback API and shader semantics,Highest,API identified
+Bitmap utilities,ECUtils native JNI functions,Implement and test pixel copy/resample/alpha/compression primitives,High,POC started
+PNG/JPEG encode,impexp extension functions,Use native Windows codecs/library with matching alpha/metadata behavior,High,Not implemented
+PSD/project conversion,TTConverterPSD + model/layer classes,Map file format and validate round-trip compatibility,High,Analyzed
+Quick selection,quickselection extension context,Port mask algorithm and UI interaction,Medium,API identified
+Alpha matting,am extension context,Port algorithm or substitute after quality benchmark,Medium,API identified
+Scribble segmentation,ss extension context,Port segmentation algorithm or substitute after quality benchmark,Medium,API identified
+Camera/camera roll,Android camera and media APIs,Replace with Windows file picker/camera APIs or omit from offline MVP,Low,Can defer
+Stylus pressure,pressure.jaja extension context,Map to Windows Pointer/WinTab/WM_POINTER,Medium,API identified
+Cloud sync/social,push notification + CC sync extensions,Disable for offline MVP; isolate as optional integrations,Low,Can defer
+Printer/email/Bonjour/httpd,Device and networking extension contexts,Replace individually only if required,Low,Can defer
