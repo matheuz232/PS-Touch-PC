@@ -45,7 +45,7 @@ void save_psd_layers(const Document& document,const std::string& path){
  for(auto it=layers.rbegin();it!=layers.rend();++it){
   const auto& l=*it;
   const int64_t right=static_cast<int64_t>(l.x)+l.image.width(),bottom=static_cast<int64_t>(l.y)+l.image.height();
-  if(l.x<0||l.y<0||right>document.width()||bottom>document.height())throw std::invalid_argument("PSD layer bounds must fit inside canvas");
+  if(right<std::numeric_limits<int32_t>::min()||right>std::numeric_limits<int32_t>::max()||bottom<std::numeric_limits<int32_t>::min()||bottom>std::numeric_limits<int32_t>::max())throw std::invalid_argument("PSD layer bounds exceed signed 32-bit coordinates");
   if(l.name.size()>255)throw std::length_error("PSD layer names are limited to 255 UTF-8 bytes");
   put32(records,static_cast<uint32_t>(l.y));put32(records,static_cast<uint32_t>(l.x));put32(records,static_cast<uint32_t>(bottom));put32(records,static_cast<uint32_t>(right));
   put16(records,4);
@@ -119,7 +119,7 @@ Document load_psd_layers(const std::string& path){
   if(used<extraLength)skip_bytes(i,static_cast<uint32_t>(extraLength-used));
   (void)consumed;
   const int64_t rw=static_cast<int64_t>(r.right)-r.left,rh=static_cast<int64_t>(r.bottom)-r.top;
-  if(rw<=0||rh<=0||rw>width||rh>height||r.left<0||r.top<0||r.right>static_cast<int32_t>(width)||r.bottom>static_cast<int32_t>(height)||static_cast<uint64_t>(rw)*static_cast<uint64_t>(rh)>100000000ULL)throw std::runtime_error("PSD layer bounds are invalid or outside canvas");
+  if(rw<=0||rh<=0||rw>30000||rh>30000||static_cast<uint64_t>(rw)*static_cast<uint64_t>(rh)>100000000ULL)throw std::runtime_error("PSD layer bounds are invalid or exceed safety limits");
   records.push_back(std::move(r));
  }
  const auto afterRecords=i.tellg();
