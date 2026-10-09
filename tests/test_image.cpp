@@ -17,7 +17,7 @@ int main() {
     Image corner(2,2,{0,255,0,255});source_over(dst,corner,1,1);
     assert(dst.at(1,1).g==255&&dst.at(1,1).r==0);
     const auto beforeOffscreen=dst.pixels();source_over(dst,corner,INT32_MAX,INT32_MAX);
-    assert(dst.pixels()==beforeOffscreen);
+    for(size_t i=0;i<beforeOffscreen.size();++i){const auto actual=dst.pixels()[i],expected=beforeOffscreen[i];assert(actual.r==expected.r&&actual.g==expected.g&&actual.b==expected.b&&actual.a==expected.a);}
     Image ramp(2,1,{0,0,0,255}); ramp.at(1,0)={100,100,100,255};
     Image mid=resample_bilinear(ramp,3,1); assert(mid.width()==3 && mid.at(1,0).r==50);
     Image unchanged(1,1,{100,120,140,255}); brightness_contrast(unchanged,0.0f,0.0f);
