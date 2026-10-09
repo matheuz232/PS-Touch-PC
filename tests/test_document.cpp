@@ -27,7 +27,10 @@ int main(){
   const auto pixel=blended.composite().at(0,0);assert(pixel.a==255);
   if(mode==BlendMode::Darken)assert(pixel.r==100&&pixel.g==100&&pixel.b==50);
   if(mode==BlendMode::Lighten)assert(pixel.r==200&&pixel.g==150&&pixel.b==200);
+  if(mode==BlendMode::Multiply)assert(pixel.r==78&&pixel.g==59&&pixel.b==39);
+  if(mode==BlendMode::Screen)assert(pixel.r==222&&pixel.g==191&&pixel.b==211);
   if(mode==BlendMode::Add)assert(pixel.r==255&&pixel.g==250&&pixel.b==250);
+  if(mode==BlendMode::Overlay)assert(pixel.r==157&&pixel.g==127&&pixel.b==167);
   if(mode==BlendMode::Difference)assert(pixel.r==100&&pixel.g==50&&pixel.b==150);
   if(mode==BlendMode::Subtract)assert(pixel.r==0&&pixel.g==50&&pixel.b==150);
  }
