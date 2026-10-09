@@ -26,6 +26,10 @@ int main() {
     for(size_t i=0;i<beforeOffscreen.size();++i){const auto actual=dst.pixels()[i],expected=beforeOffscreen[i];assert(actual.r==expected.r&&actual.g==expected.g&&actual.b==expected.b&&actual.a==expected.a);}
     Image ramp(2,1,{0,0,0,255}); ramp.at(1,0)={100,100,100,255};
     Image mid=resample_bilinear(ramp,3,1); assert(mid.width()==3 && mid.at(1,0).r==50);
+    Image alphaRamp(2,1,{255,0,255,0});alphaRamp.at(1,0)={0,100,200,255};Image alphaMid=resample_bilinear(alphaRamp,3,1);
+    assert(alphaMid.at(1,0).a==128&&alphaMid.at(1,0).r==0&&alphaMid.at(1,0).g==100&&alphaMid.at(1,0).b==200);
+    Image transparentRamp(2,1,{250,10,20,0});transparentRamp.at(1,0)={20,30,40,0};Image transparentMid=resample_bilinear(transparentRamp,3,1);
+    assert(transparentMid.at(1,0).a==0&&transparentMid.at(1,0).r==0&&transparentMid.at(1,0).g==0&&transparentMid.at(1,0).b==0);
     Image unchanged(1,1,{100,120,140,255}); brightness_contrast(unchanged,0.0f,0.0f);
     assert(unchanged.at(0,0).r==100 && unchanged.at(0,0).g==120 && unchanged.at(0,0).b==140);
     Image bright(1,1,{100,120,140,255}); brightness_contrast(bright,0.1f,0.0f);
