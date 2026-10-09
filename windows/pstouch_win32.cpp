@@ -256,13 +256,23 @@ void show_filter_menu(HWND hwnd,int x,int y) {
  AppendMenuW(menu,MF_STRING,1008,L"Vinheta");
  AppendMenuW(menu,MF_STRING,1009,L"Pixelizar");
  AppendMenuW(menu,MF_STRING,1010,L"Preto e branco (limiar)");
- AppendMenuW(menu,MF_STRING,1011,L"Exposição +0,75 EV");
+ HMENU exposure=CreatePopupMenu();
+ if(exposure) {
+  constexpr float exposure_values[]={-2.0f,-1.0f,-0.5f,0.5f,1.0f,2.0f};
+  for(UINT i=0;i<6;i++) { wchar_t ev_text[48]{}; swprintf_s(ev_text,L"Exposição %+.1f EV",exposure_values[i]); AppendMenuW(exposure,MF_STRING,1110+i,ev_text); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)exposure,L"Exposição");
+ }
  AppendMenuW(menu,MF_STRING,1012,L"Matiz +30°");
  AppendMenuW(menu,MF_STRING,1013,L"Níveis (predefinição)");
  AppendMenuW(menu,MF_STRING,1014,L"Contraste automático");
  AppendMenuW(menu,MF_STRING,1015,L"Abrir sombras / reduzir realces");
  AppendMenuW(menu,MF_STRING,1016,L"Equilíbrio de cores (frio/quente)");
- AppendMenuW(menu,MF_STRING,1017,L"Vibração seletiva +55%");
+ HMENU vibrance=CreatePopupMenu();
+ if(vibrance) {
+  constexpr int vibrance_values[]={-100,-75,-50,-25,25,50,75,100};
+  for(UINT i=0;i<8;i++) { wchar_t text_value[48]{}; swprintf_s(text_value,L"Vibração %s%d%%",vibrance_values[i]>0?L"+":L"",vibrance_values[i]); AppendMenuW(vibrance,MF_STRING,1100+i,text_value); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)vibrance,L"Vibração seletiva");
+ }
  AppendMenuW(menu,MF_STRING,1018,L"Equalizar luminância (histograma)");
  const UINT selected=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,x,y,0,hwnd,nullptr);
  if(selected) apply_photo_filter_command(selected);
