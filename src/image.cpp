@@ -41,14 +41,30 @@ void unpremultiply_alpha(Image& image) {
     }
 }
 void source_over(Image& dst, const Image& src, int32_t ox, int32_t oy) {
-    for (uint32_t sy = 0; sy < src.height(); ++sy) for (uint32_t sx = 0; sx < src.width(); ++sx) {
-        const int64_t dx = static_cast<int64_t>(ox) + sx, dy = static_cast<int64_t>(oy) + sy;
-        if (dx < 0 || dy < 0 || dx >= dst.width() || dy >= dst.height()) continue;
-        const Pixel s = src.at(sx, sy); Pixel& d = dst.at(static_cast<uint32_t>(dx), static_cast<uint32_t>(dy));
-        const float sa = s.a / 255.0f, da = d.a / 255.0f, oa = sa + da * (1.0f - sa);
-        if (oa <= 0.0f) { d = {0,0,0,0}; continue; }
-        const auto blend = [&](uint8_t sc, uint8_t dc) { return clamp_byte((sc * sa + dc * da * (1.0f - sa)) / oa); };
-        d.r = blend(s.r, d.r); d.g = blend(s.g, d.g); d.b = blend(s.b, d.b); d.a = clamp_byte(oa * 255.0f);
+    // Clip the overlap once, then walk contiguous rows to avoid per-pixel
+    // coordinate arithmetic and repeated bounds checks on large canvases.
+    const int64_t left=ox, top=oy;
+    const int64_t sx0=std::max<int64_t>(0,-left), sy0=std::max<int64_t>(0,-top);
+    const int64_t sx1=std::min<int64_t>(src.width(),static_cast<int64_t>(dst.width())-left);
+    const int64_t sy1=std::min<int64_t>(src.height(),static_cast<int64_t>(dst.height())-top);
+    if(sx0>=sx1||sy0>=sy1)return;
+    const size_t sourceWidth=src.width(), destinationWidth=dst.width();
+    const size_t copyWidth=static_cast<size_t>(sx1-sx0), copyHeight=static_cast<size_t>(sy1-sy0);
+    const size_t sourceX=static_cast<size_t>(sx0), sourceY=static_cast<size_t>(sy0);
+    const size_t destinationX=static_cast<size_t>(left+sx0), destinationY=static_cast<size_t>(top+sy0);
+    const auto& source=src.pixels();
+    auto& destination=dst.mutable_pixels();
+    for(size_t row=0;row<copyHeight;++row){
+        const size_t sourceStart=(sourceY+row)*sourceWidth+sourceX;
+        const size_t destinationStart=(destinationY+row)*destinationWidth+destinationX;
+        for(size_t col=0;col<copyWidth;++col){
+            const Pixel& sp=source[sourceStart+col];
+            Pixel& dp=destination[destinationStart+col];
+            const float sa=sp.a/255.0f, da=dp.a/255.0f, oa=sa+da*(1.0f-sa);
+            if(oa<=0.0f){dp={0,0,0,0};continue;}
+            const auto blend=[&](uint8_t sc,uint8_t dc){return clamp_byte((sc*sa+dc*da*(1.0f-sa))/oa);};
+            dp.r=blend(sp.r,dp.r);dp.g=blend(sp.g,dp.g);dp.b=blend(sp.b,dp.b);dp.a=clamp_byte(oa*255.0f);
+        }
     }
 }
 Image resample_bilinear(const Image& src, uint32_t width, uint32_t height) {
