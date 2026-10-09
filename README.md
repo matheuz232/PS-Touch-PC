@@ -1,6 +1,6 @@
 # PS Touch Native Core — proof of concept
 
-This is the first platform-neutral native-core experiment derived from the APK's discovered image-processing responsibilities. It is **not** a converted Photoshop Touch application and does not yet open the original SWF, reproduce the full filter suite, or generate a complete PS Touch EXE. PSD import currently reads flattened RGB/RGBA PSD v1 files; layered PSD v1 export is also available for editable layer stacks.
+This is the first platform-neutral native-core experiment derived from the APK's discovered image-processing responsibilities. It is **not** a converted Photoshop Touch application and does not yet open the original SWF, reproduce the full filter suite, or generate a complete PS Touch EXE. PSD v1 import now supports flattened RGB/RGBA files and editable layer stacks within the documented compression limits; layered PSD v1 export is also available.
 
 ## Included
 - RGBA8 image buffer with dimension/allocation guards.
@@ -8,7 +8,7 @@ This is the first platform-neutral native-core experiment derived from the APK's
 - A small CLI that opens an image, applies the brightness/contrast primitive, and writes a result.
 - Native document/layer model with layer order, visibility, opacity, offsets, and nine blend modes modeled on the blend-mode list found in the decompiled application.
 - A versioned, bounded custom `.ptdoc` project format for round-tripping RGBA layer pixels and metadata.
-- PSD v1 import for flattened 8-bit RGB/RGBA (raw and PackBits RLE) and export both as flattened images and as editable layer stacks using raw channel compression. PSD file operations accept UTF-8 paths, including non-ASCII filenames on Windows. Layered PSD import is not yet implemented.
+- PSD v1 import for flattened 8-bit RGB/RGBA (raw and PackBits RLE) and layered 8-bit RGB documents with raw layer channels; export is available both as flattened images and editable layer stacks. The Win32 shell opens layered PSD into native layers and exports PSD from the current layer stack. PSD file operations accept UTF-8 paths, including non-ASCII filenames on Windows. Layer masks, adjustment layers, and compressed layer-channel data are not supported by the layered importer.
 - Layer operations: duplicate, rename, reorder, visibility, opacity, and snapshot-based undo/redo history with a 20-step cap.
 - Alpha premultiplication/unpremultiplication.
 - Straight-alpha source-over compositing.
@@ -39,7 +39,7 @@ This validates an end-to-end native image pipeline only; it is not yet the PS To
 
 ## Native document model
 
-`Document` composites layers bottom-to-top and supports the blend mode names observed in `TTLayer.as` (Normal, Darken, Multiply, Lighten, Screen, Add, Overlay, Difference, Subtract). The custom `.ptdoc` container is a new prototype format and is **not** claimed to be compatible with Adobe PSD or PS Touch internal cache files. PSD import currently flattens a document and accepts only 8-bit RGB/RGBA PSD v1 files with raw or PackBits compression. Export still emits only a flattened composite image; layer records, masks, adjustment layers, CMYK, 16-bit, and PS Touch proprietary formats are not supported. The current layer model is a compatibility-oriented starting point, not a claim of pixel-perfect equivalence with the original GPU renderer.
+`Document` composites layers bottom-to-top and supports the blend mode names observed in `TTLayer.as` (Normal, Darken, Multiply, Lighten, Screen, Add, Overlay, Difference, Subtract). The custom `.ptdoc` container is a new prototype format and is **not** claimed to be compatible with Adobe PSD or PS Touch internal cache files. Flattened PSD import accepts 8-bit RGB/RGBA PSD v1 files with raw or PackBits RLE compression. Layered import supports RGB 8-bit layer records with raw channel compression and the standard blend modes represented by this model; it rejects unsupported blend modes, masks, and out-of-canvas bounds. Layered export writes editable RGBA layers using raw channel compression. Adjustment layers, CMYK, 16-bit, and PS Touch proprietary formats are not supported. The current layer model is a compatibility-oriented starting point, not a claim of pixel-perfect equivalence with the original GPU renderer.
 
 ## Windows UI shell and portable distribution
 
