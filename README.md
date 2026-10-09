@@ -15,7 +15,7 @@ This is the first platform-neutral native-core experiment derived from the APK's
 - Straight-alpha source-over compositing.
 - Bilinear image resampling, crop, horizontal/vertical flip, 90-degree rotation, grayscale, sepia, saturation adjustment, color inversion, configurable posterization, Gaussian blur, sharpening, Sobel edge detection, thresholding, gamma correction, color-temperature adjustment, vignette, and pixelation.
 - 100 built-in photo-grade presets across ten families (Natural, Warm, Cool, Vintage, Cinema, Fade, Vivid, Matte, Teal Orange, and Monochrome), each with ten strengths. Presets run on the CPU, preserve alpha, and expose names through the native API.
-- The Win32 filter menu exposes selectable parameter strengths for exposure, saturation, selective vibrance, Gaussian blur, sharpening, gamma, color temperature, and vignette, so the user can choose the effect intensity without editing code. These are discrete strength choices, not live sliders or a non-destructive adjustment layer.
+- The Win32 filter menu exposes selectable parameter strengths for exposure, saturation, selective vibrance, Gaussian blur, sharpening, gamma, color temperature, vignette, hue, levels, shadows/highlights, color balance, posterization, pixelation and thresholding, so the user can choose effect intensity without editing code. Filter results are previewed on the canvas and require confirmation; choosing No cancels via Undo. These are discrete strength choices, not live sliders or non-destructive adjustment layers.
 - Brightness/contrast primitive ported from the formula in the APK’s `contrastbrightness.fs` shader (still requires GPU-vs-CPU pixel-parity validation).
 - Unit tests for the primitives above.
 
