@@ -95,7 +95,7 @@ The ordinary **Salvar** command exports PNG/JPEG/BMP/TIFF or PSD; PSD export pre
 
 ### Iteration 20 — transaction history and canvas rotation
 
-Editor layer mutations now checkpoint the pre-edit document state before changing pixels or layer structure. This aligns the Win32 layer actions with the native history model so undo restores the previous state and redo restores the edited state for visibility, opacity, layer add/remove/duplicate, text placement, mockup placement, filters and transforms.
+Editor layer mutations record a snapshot after each completed operation. The history cursor then lets Undo restore the preceding checkpoint and Redo restore the completed edit for visibility, opacity, layer add/remove/duplicate, text placement, mockup placement, filters and transforms.
 
 The rotate commands now rotate the complete document canvas and all layer pixels/offsets together, swapping canvas dimensions and preserving off-canvas placement where representable. This avoids clipping wide canvases or layers merely because a single layer's dimensions changed. A regression test covers rotation of a non-square canvas, offset transformation, composite output and undo/redo. The latest CI runs for these changes must complete before the Windows build can be considered verified.
 
