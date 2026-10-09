@@ -246,6 +246,29 @@ void apply_photo_filter_command(UINT command) {
      constexpr float vignette_values[]={0.15f,0.30f,0.45f,0.60f,0.75f,1.0f};
      pstouch::vignette(image,vignette_values[command-1170]); break;
     }
+    case 1180: case 1181: case 1182: case 1183: case 1184: case 1185: {
+     constexpr float hue_values[]={-90.0f,-45.0f,-15.0f,15.0f,45.0f,90.0f};
+     pstouch::adjust_hue(image,hue_values[command-1180]); break;
+    }
+    case 1190: case 1191: case 1192: case 1193: case 1194: case 1195: {
+     constexpr uint8_t black_values[]={0,4,8,12,16,24};
+     constexpr uint8_t white_values[]={255,251,247,243,239,231};
+     constexpr float gamma_values[]={1.0f,0.95f,1.0f,1.05f,1.1f,1.15f};
+     const size_t i=command-1190;
+     pstouch::adjust_levels(image,black_values[i],white_values[i],gamma_values[i]); break;
+    }
+    case 1200: case 1201: case 1202: case 1203: case 1204: case 1205: {
+     constexpr float shadows[]={0.2f,0.35f,0.5f,0.65f,0.8f,0.5f};
+     constexpr float highlights[]={0.0f,0.0f,0.0f,0.0f,0.0f,-0.5f};
+     pstouch::adjust_shadows_highlights(image,shadows[command-1200],highlights[command-1200]); break;
+    }
+    case 1210: case 1211: case 1212: case 1213: case 1214: case 1215: {
+     constexpr float red[]={0.15f,0.10f,0.05f,0.0f,-0.05f,-0.15f};
+     constexpr float green[]={0.0f,0.05f,0.0f,0.0f,0.0f,0.0f};
+     constexpr float blue[]={-0.15f,-0.10f,-0.05f,0.0f,0.05f,0.15f};
+     const size_t i=command-1210;
+     pstouch::color_balance(image,red[i],green[i],blue[i]); break;
+    }
     default: return;
    }
    g_document->checkpoint("Apply image filter");
@@ -316,11 +339,31 @@ void show_filter_menu(HWND hwnd,int x,int y) {
   for(UINT i=0;i<8;i++) { wchar_t sat_text[48]{}; swprintf_s(sat_text,L"Saturação %s%d%%",saturation_values[i]>0?L"+":L"",saturation_values[i]); AppendMenuW(saturation,MF_STRING,1120+i,sat_text); }
   AppendMenuW(menu,MF_POPUP,(UINT_PTR)saturation,L"Saturação");
  }
- AppendMenuW(menu,MF_STRING,1012,L"Matiz +30°");
- AppendMenuW(menu,MF_STRING,1013,L"Níveis (predefinição)");
+ HMENU hue=CreatePopupMenu();
+ if(hue) {
+  constexpr float values[]={-90.0f,-45.0f,-15.0f,15.0f,45.0f,90.0f};
+  for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Matiz %+0.0f graus",values[i]); AppendMenuW(hue,MF_STRING,1180+i,label); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)hue,L"Matiz");
+ }
+ HMENU levels=CreatePopupMenu();
+ if(levels) {
+  constexpr int values[]={0,4,8,12,16,24};
+  for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Níveis: preto %d",values[i]); AppendMenuW(levels,MF_STRING,1190+i,label); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)levels,L"Níveis");
+ }
  AppendMenuW(menu,MF_STRING,1014,L"Contraste automático");
- AppendMenuW(menu,MF_STRING,1015,L"Abrir sombras / reduzir realces");
- AppendMenuW(menu,MF_STRING,1016,L"Equilíbrio de cores (frio/quente)");
+ HMENU shadows=CreatePopupMenu();
+ if(shadows) {
+  constexpr int values[]={20,35,50,65,80,100};
+  for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Sombras +%d%%",values[i]); AppendMenuW(shadows,MF_STRING,1200+i,label); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)shadows,L"Sombras e realces");
+ }
+ HMENU balance=CreatePopupMenu();
+ if(balance) {
+  const wchar_t* labels[]={L"Mais frio",L"Frio suave",L"Levemente frio",L"Neutro",L"Levemente quente",L"Mais quente"};
+  for(UINT i=0;i<6;i++) AppendMenuW(balance,MF_STRING,1210+i,labels[i]);
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)balance,L"Equilíbrio de cores");
+ }
  HMENU vibrance=CreatePopupMenu();
  if(vibrance) {
   constexpr int vibrance_values[]={-100,-75,-50,-25,25,50,75,100};
