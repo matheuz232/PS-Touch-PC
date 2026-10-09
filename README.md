@@ -8,7 +8,7 @@ This is the first platform-neutral native-core experiment derived from the APK's
 - A small CLI that opens an image, applies the brightness/contrast primitive, and writes a result.
 - Native document/layer model with layer order, visibility, opacity, offsets, and nine blend modes modeled on the blend-mode list found in the decompiled application.
 - A versioned, bounded custom `.ptdoc` project format for round-tripping RGBA layer pixels and metadata.
-- Flattened PSD v1 import/export for 8-bit RGB/RGBA: raw and PackBits RLE import; raw planar export. Layered PSD structure is not yet imported/exported.
+- Flattened PSD v1 import/export for 8-bit RGB/RGBA: raw and PackBits RLE import; raw planar export. PSD file operations accept UTF-8 paths, including non-ASCII filenames on Windows; layered PSD structure is not yet imported/exported.
 - Layer operations: duplicate, rename, reorder, visibility, opacity, and snapshot-based undo/redo history with a 20-step cap.
 - Alpha premultiplication/unpremultiplication.
 - Straight-alpha source-over compositing.
