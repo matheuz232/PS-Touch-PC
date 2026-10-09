@@ -214,15 +214,14 @@ void apply_photo_filter_command(UINT command) {
     case 1016: pstouch::color_balance(image,0.12f,0.0f,-0.12f); break;
     case 1017: pstouch::adjust_vibrance(image,0.55f); break;
     case 1018: pstouch::equalize_luminance(image); break;
-    default:
-     if(command>=1100 && command<=1107) {
-      constexpr float strengths[]={-1.0f,-0.75f,-0.5f,-0.25f,0.25f,0.5f,0.75f,1.0f};
-      pstouch::adjust_vibrance(image,strengths[command-1100]);
-     } else if(command>=1110 && command<=1115) {
-      constexpr float stops[]={-2.0f,-1.0f,-0.5f,0.5f,1.0f,2.0f};
-      pstouch::adjust_exposure(image,stops[command-1110]);
-     } else return;
-     break;
+    case 1100: case 1101: case 1102: case 1103: case 1104: case 1105: case 1106: case 1107: {
+     constexpr float strengths[]={-1.0f,-0.75f,-0.5f,-0.25f,0.25f,0.5f,0.75f,1.0f};
+     pstouch::adjust_vibrance(image,strengths[command-1100]); break;
+    }
+    case 1110: case 1111: case 1112: case 1113: case 1114: case 1115: {
+     constexpr float stops[]={-2.0f,-1.0f,-0.5f,0.5f,1.0f,2.0f};
+     pstouch::adjust_exposure(image,stops[command-1110]); break;
+    }
     default: return;
    }
    g_document->checkpoint("Apply image filter");
