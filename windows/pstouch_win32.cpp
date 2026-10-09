@@ -206,6 +206,10 @@ void apply_photo_filter_command(UINT command) {
     case 1008: pstouch::vignette(image,0.35f); break;
     case 1009: pstouch::pixelate(image,8); break;
     case 1010: pstouch::threshold(image,128); break;
+    case 1011: pstouch::adjust_exposure(image,0.75f); break;
+    case 1012: pstouch::adjust_hue(image,30.0f); break;
+    case 1013: pstouch::adjust_levels(image,12,243,1.0f); break;
+    case 1014: pstouch::auto_contrast(image); break;
     default: return;
    }
    g_document->checkpoint("Apply image filter");
@@ -240,6 +244,10 @@ void show_filter_menu(HWND hwnd,int x,int y) {
  AppendMenuW(menu,MF_STRING,1008,L"Vinheta");
  AppendMenuW(menu,MF_STRING,1009,L"Pixelizar");
  AppendMenuW(menu,MF_STRING,1010,L"Preto e branco (limiar)");
+ AppendMenuW(menu,MF_STRING,1011,L"Exposição +0,75 EV");
+ AppendMenuW(menu,MF_STRING,1012,L"Matiz +30°");
+ AppendMenuW(menu,MF_STRING,1013,L"Níveis (predefinição)");
+ AppendMenuW(menu,MF_STRING,1014,L"Contraste automático");
  const UINT selected=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,x,y,0,hwnd,nullptr);
  if(selected) apply_photo_filter_command(selected);
  DestroyMenu(menu);
