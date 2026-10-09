@@ -226,6 +226,26 @@ void apply_photo_filter_command(UINT command) {
      constexpr float stops[]={-2.0f,-1.0f,-0.5f,0.5f,1.0f,2.0f};
      pstouch::adjust_exposure(image,stops[command-1110]); break;
     }
+    case 1130: case 1131: case 1132: case 1133: case 1134: case 1135: {
+     constexpr float gamma_values[]={0.60f,0.75f,0.90f,1.10f,1.25f,1.50f};
+     pstouch::adjust_gamma(image,gamma_values[command-1130]); break;
+    }
+    case 1140: case 1141: case 1142: case 1143: case 1144: {
+     constexpr float blur_values[]={0.5f,1.0f,2.0f,3.0f,5.0f};
+     pstouch::gaussian_blur(image,blur_values[command-1140]); break;
+    }
+    case 1150: case 1151: case 1152: case 1153: case 1154: case 1155: {
+     constexpr float sharp_values[]={0.25f,0.5f,1.0f,1.5f,2.0f,3.0f};
+     pstouch::sharpen(image,sharp_values[command-1150]); break;
+    }
+    case 1160: case 1161: case 1162: case 1163: case 1164: case 1165: {
+     constexpr float temperature_values[]={-0.5f,-0.25f,-0.1f,0.1f,0.25f,0.5f};
+     pstouch::adjust_temperature(image,temperature_values[command-1160]); break;
+    }
+    case 1170: case 1171: case 1172: case 1173: case 1174: case 1175: {
+     constexpr float vignette_values[]={0.15f,0.30f,0.45f,0.60f,0.75f,1.0f};
+     pstouch::vignette(image,vignette_values[command-1170]); break;
+    }
     default: return;
    }
    g_document->checkpoint("Apply image filter");
@@ -252,12 +272,36 @@ void show_filter_menu(HWND hwnd,int x,int y) {
  AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
  AppendMenuW(menu,MF_STRING,1001,L"Inverter cores");
  AppendMenuW(menu,MF_STRING,1002,L"Posterizar (6 níveis)");
- AppendMenuW(menu,MF_STRING,1003,L"Desfoque gaussiano");
- AppendMenuW(menu,MF_STRING,1004,L"Nitidez");
+ HMENU blur=CreatePopupMenu();
+ if(blur) {
+  constexpr float values[]={0.5f,1.0f,2.0f,3.0f,5.0f};
+  for(UINT i=0;i<5;i++) { wchar_t label[48]{}; swprintf_s(label,L"Desfoque sigma %.1f",values[i]); AppendMenuW(blur,MF_STRING,1140+i,label); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)blur,L"Desfoque gaussiano");
+ }
+ HMENU sharp=CreatePopupMenu();
+ if(sharp) {
+  constexpr float values[]={0.25f,0.5f,1.0f,1.5f,2.0f,3.0f};
+  for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Nitidez %.2f",values[i]); AppendMenuW(sharp,MF_STRING,1150+i,label); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)sharp,L"Nitidez");
+ }
  AppendMenuW(menu,MF_STRING,1005,L"Detectar bordas");
- AppendMenuW(menu,MF_STRING,1006,L"Corrigir gama");
- AppendMenuW(menu,MF_STRING,1007,L"Temperatura quente");
- AppendMenuW(menu,MF_STRING,1008,L"Vinheta");
+ HMENU gamma=CreatePopupMenu();
+ if(gamma) {
+  constexpr float values[]={0.60f,0.75f,0.90f,1.10f,1.25f,1.50f};
+  for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Gama %.2f",values[i]); AppendMenuW(gamma,MF_STRING,1130+i,label); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)gamma,L"Corrigir gama");
+ }
+ HMENU temperature=CreatePopupMenu();
+ if(temperature) {
+  constexpr float values[]={-0.5f,-0.25f,-0.1f,0.1f,0.25f,0.5f};
+  for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Temperatura %+0.2f",values[i]); AppendMenuW(temperature,MF_STRING,1160+i,label); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)temperature,L"Temperatura de cor");
+ }
+ HMENU vignette=CreatePopupMenu();
+ if(vignette) {
+  constexpr int values[]={15,30,45,60,75,100};
+  for(UINT i=0;i<6;i++) { wchar_t label[48]{}; swprintf_s(label,L"Vinheta %d%%",values[i]); AppendMenuW(vignette,MF_STRING,1170+i,label); }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)vignette,L"Vinheta");
  AppendMenuW(menu,MF_STRING,1009,L"Pixelizar");
  AppendMenuW(menu,MF_STRING,1010,L"Preto e branco (limiar)");
  HMENU exposure=CreatePopupMenu();
