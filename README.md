@@ -61,7 +61,7 @@ The development roadmap is focused exclusively on the editor itself: (1) connect
 
 ### Iteration 17 — first text placement workflow
 
-The Win32 shell now has a basic keyboard-driven text tool: select **Texto** in the left tool list, click inside the image, type text, press **Enter** to commit, or **Esc** to cancel. Committing creates an undo snapshot. This first pass renders white 32 px Arial text; font family/size selectors, text editing after placement, color controls, and true editable text layers remain future work. The `fonts/` directory is detected and loaded privately, but those custom families are not yet selectable in the text tool.
+The Win32 shell now has a basic keyboard-driven text tool: select **Texto** in the left tool list, click inside the image, type text, press **Enter** to commit, or **Esc** to cancel. Committing creates an undo snapshot. The Windows font dialog now lets the user select a font family, size, style, and color before placing text. Font files from `fonts/` are also registered in a GDI+ private font collection for rendering, in addition to process-private Windows registration. Text is still rasterized directly into the image: editing text after placement, live preview while typing, and true editable text layers remain future work.
 
 ### Iteration 16 — custom font discovery
 
