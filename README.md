@@ -27,7 +27,7 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-The test targets are console test executables, not the final application. GitHub Actions now defines Linux/GCC and Windows/MSVC build-and-test jobs; check the Actions tab for actual runner results. Local sandbox validation is not a substitute for a successful Windows CI run. The next porting gate is a Windows build, layered PSD support, and representative shader/filter output validated against reference output. GPU implementation and original ActionScript UI integration are not yet included.
+The test targets are console test executables, not the final application. GitHub Actions now defines Linux/GCC and Windows/MSVC build-and-test jobs; check the Actions tab for actual runner results. Local sandbox validation is not a substitute for a successful Windows CI run. The current porting gate is broader PSD interoperability, Windows GUI validation, and representative shader/filter output compared against reference output. GPU implementation and original ActionScript UI integration are not yet included.
 
 ## Command-line prototype
 
@@ -47,7 +47,7 @@ A first Win32 desktop shell now lives in `windows/pstouch_win32.cpp`. It uses pe
 
 Portable packaging notes are in `portable/README.txt`. The intended release is a folder containing the EXE, required redistributable runtime files and resources, with configuration/cache/log paths kept beside the application. No installer is planned. The Linux sandbox used for this iteration does not provide an MSVC/Windows GUI runtime, so the Win32 target has not been compiled or executed here.
 
-### Iteration 12 — first interactive editing commands
+### Historical iteration 12 — first interactive editing commands
 The Win32 shell now includes native Save As (PNG/JPEG/BMP/TIFF encoders), grayscale and sepia commands, a bounded 20-snapshot undo history, redo, and Ctrl+S/Ctrl+Z/Ctrl+Y shortcuts. These commands currently operate on a GDI+ bitmap owned by the UI shell; they are intentionally separate from the native `pstouch_image_core` and are not parity-tested against Photoshop Touch. Layered PSD editing and the full original editor remain unimplemented.
 
 
@@ -56,7 +56,7 @@ The Win32 shell now has a first mockup-composition workflow: open a product/back
 
 The latest reliability update also fixes save-over-existing behavior for `.ptdoc` and flattened `.psd` output on Windows using the Win32 replacement API; Linux retains `rename` semantics. A regression test covers saving a project twice to the same path.
 
-The development roadmap is focused exclusively on the editor itself: (1) connect the Win32 interface to the native document/layer model and transactional history, (2) real layer panel operations, (3) layered PSD import/export, (4) non-destructive adjustment layers and masks, (5) transform/perspective/warp tools for mockup composition, (6) text/vector layers and layer styles, (7) selection/refine-edge tools, and (8) content-aware fill as a separately evaluated image-editing capability. These are roadmap items, not features claimed as already working.
+The remaining roadmap is focused exclusively on the editor itself: (1) validate layered PSD roundtrips in Photoshop/GIMP and improve interoperability, (2) non-destructive adjustment layers and masks, (3) transform/perspective/warp tools for mockup composition, (4) editable text/vector layers and layer styles, (5) selection/refine-edge tools, and (6) content-aware fill as a separately evaluated image-editing capability. These are roadmap items, not features claimed as already working.
 
 
 ### Iteration 17 — first text placement workflow
