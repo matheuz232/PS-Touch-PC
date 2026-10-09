@@ -38,6 +38,8 @@ public:
     static Document load(const std::string& path);
     void checkpoint(std::string label);
     bool undo(); bool redo();
+    // Restore the current history snapshot without moving the undo/redo cursor.
+    bool restore_current_checkpoint();
     bool can_undo() const noexcept; bool can_redo() const noexcept;
     const std::string& undo_label() const noexcept;
     const std::string& redo_label() const noexcept;
