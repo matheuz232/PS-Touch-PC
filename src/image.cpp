@@ -187,4 +187,23 @@ void auto_contrast(Image& image){
     }
 }
 
+
+void adjust_shadows_highlights(Image& image,float shadows,float highlights){
+    if(!std::isfinite(shadows)||!std::isfinite(highlights)||shadows< -1.0f||shadows>1.0f||highlights< -1.0f||highlights>1.0f)throw std::invalid_argument("shadows and highlights must be in [-1, 1]");
+    if(shadows==0.0f&&highlights==0.0f)return;
+    auto tone=[&](uint8_t value){
+        const float v=value/255.0f;
+        const float shadowWeight=(1.0f-v)*(1.0f-v);
+        const float highlightWeight=v*v;
+        const float adjusted=v+shadows*shadowWeight*0.65f+highlights*highlightWeight*0.65f;
+        return clamp_byte(adjusted*255.0f);
+    };
+    for(auto& p:image.mutable_pixels()){p.r=tone(p.r);p.g=tone(p.g);p.b=tone(p.b);}
+}
+void color_balance(Image& image,float red,float green,float blue){
+    if(!std::isfinite(red)||!std::isfinite(green)||!std::isfinite(blue)||red< -1.0f||red>1.0f||green< -1.0f||green>1.0f||blue< -1.0f||blue>1.0f)throw std::invalid_argument("color balance channels must be in [-1, 1]");
+    const float rGain=std::exp2(red),gGain=std::exp2(green),bGain=std::exp2(blue);
+    for(auto& p:image.mutable_pixels()){p.r=clamp_byte(p.r*rGain);p.g=clamp_byte(p.g*gGain);p.b=clamp_byte(p.b*bGain);}
+}
+
 }
