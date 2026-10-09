@@ -87,7 +87,7 @@ The Win32 shell now initializes a native `Document` when opening an image and re
 
 The Windows shell now offers **Abrir proj.** and **Salvar proj.** toolbar actions for the custom `.ptdoc` format, in addition to **Ctrl+Shift+O** and **Ctrl+Shift+S**. Saving preserves the native layer stack, visibility, opacity, offsets, blend-mode metadata and RGBA pixels rather than exporting only the flattened preview. Opening a project rebuilds the composite preview from the document and seeds the native undo history. Project paths are converted from Windows wide-character paths to UTF-8 and resolved through `std::filesystem::u8path`, including Unicode filenames.
 
-The ordinary **Salvar** command remains an image export (PNG/JPEG/BMP/TIFF); use **Salvar proj.** to preserve editable layers. `.ptdoc` is this project's own format, not PSD or the original Photoshop Touch document format. CI validation for the project-dialog and Unicode-path commits is pending; the Windows GUI has not been interactively exercised in this environment.
+The ordinary **Salvar** command exports PNG/JPEG/BMP/TIFF or PSD; PSD export preserves the current layer stack where supported. Use **Salvar proj.** to preserve all native `.ptdoc` metadata and pixels. `.ptdoc` is this project's own format, not the original Photoshop Touch document format. CI validation for the project-dialog and Unicode-path commits is pending; the Windows GUI has not been interactively exercised in this environment.
 
 
 ### Iteration 20 — transaction history and canvas rotation
