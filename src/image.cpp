@@ -41,6 +41,9 @@ void unpremultiply_alpha(Image& image) {
     }
 }
 void source_over(Image& dst, const Image& src, int32_t ox, int32_t oy) {
+    // When compositing an image onto itself with an offset, writes could
+    // otherwise overwrite pixels that are still needed as later source pixels.
+    if(&dst==&src){Image sourceCopy=src;source_over(dst,sourceCopy,ox,oy);return;}
     // Clip the overlap once, then walk contiguous rows to avoid per-pixel
     // coordinate arithmetic and repeated bounds checks on large canvases.
     const int64_t left=ox, top=oy;
