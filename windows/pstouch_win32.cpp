@@ -290,10 +290,16 @@ void apply_photo_filter_command(UINT command) {
    if(g_document->undo()) render_document(); else MessageBoxW(g_hwnd,L"O histórico não contém uma cópia anterior suficiente para cancelar este filtro. O resultado foi mantido.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
   }
  } catch(const std::exception&) {
-  // The document history stores snapshots after completed edits. A failed
-  // operation can still have partially changed pixels before throwing.
+  // Filters can fail after mutating some pixels. The most recent completed
+  // checkpoint is the pre-filter state, so restore it rather than leaving a
+  // partially edited layer visible.
+  const bool restored=g_document->undo();
   render_document();
-  MessageBoxW(g_hwnd,L"O filtro não pôde ser concluído. Confira a camada antes de continuar; uma alteração parcial pode ter ocorrido.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
+  if(restored) {
+   MessageBoxW(g_hwnd,L"O filtro falhou e a camada foi restaurada ao estado anterior.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
+  } else {
+   MessageBoxW(g_hwnd,L"O filtro falhou e não há um ponto de restauração disponível. Verifique o documento antes de salvar.",L"PS Touch PC",MB_OK|MB_ICONERROR);
+  }
  }
 }
 void show_filter_menu(HWND hwnd,int x,int y) {
