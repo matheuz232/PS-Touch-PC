@@ -227,9 +227,13 @@ void adjust_vibrance(Image& image,float amount){
 void equalize_luminance(Image& image){
     if(image.pixels().empty())return;
     std::array<uint64_t,256> histogram{};
+    uint64_t total=0;
     for(const auto& p:image.pixels()){
+        // Fully transparent pixels do not contribute to visible image statistics.
+        if(p.a==0)continue;
         const auto y=clamp_byte(0.2126f*p.r+0.7152f*p.g+0.0722f*p.b);
         ++histogram[y];
+        ++total;
     }
     uint64_t first=0,cumulative=0;
     bool found=false;
@@ -237,7 +241,6 @@ void equalize_luminance(Image& image){
         cumulative+=histogram[i];
         if(!found&&histogram[i]!=0){first=cumulative;found=true;}
     }
-    const uint64_t total=image.pixels().size();
     if(!found||total<=first)return;
     std::array<uint8_t,256> lut{};
     cumulative=0;
@@ -247,6 +250,7 @@ void equalize_luminance(Image& image){
         lut[i]=clamp_byte(static_cast<float>(adjusted)*255.0f/static_cast<float>(total-first));
     }
     for(auto& p:image.mutable_pixels()){
+        if(p.a==0)continue;
         const float oldY=0.2126f*p.r+0.7152f*p.g+0.0722f*p.b;
         if(oldY<=0.0f)continue;
         const float scale=lut[clamp_byte(oldY)]/oldY;
