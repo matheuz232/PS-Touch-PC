@@ -18,6 +18,19 @@ int main(){
  assert(d.can_redo()&&d.redo());assert(d.layers()[1].image.at(0,0).g==255);
  // A new edit after undo must discard the old redo branch.
  assert(d.undo());d.set_name("Branched edit");d.checkpoint("branch");assert(!d.can_redo());
+ // Each supported blend mode is exercised with opaque source/destination pixels.
+ const BlendMode modes[]={BlendMode::Darken,BlendMode::Multiply,BlendMode::Lighten,BlendMode::Screen,BlendMode::Add,BlendMode::Overlay,BlendMode::Difference,BlendMode::Subtract};
+ for(const auto mode:modes){
+  Document blended(1,1,"Blend test");
+  blended.add_layer(Layer("Destination",Image(1,1,{100,150,200,255})));
+  Layer source("Source",Image(1,1,{200,100,50,255}));source.blend=mode;blended.add_layer(source);
+  const auto pixel=blended.composite().at(0,0);assert(pixel.a==255);
+  if(mode==BlendMode::Darken)assert(pixel.r==100&&pixel.g==100&&pixel.b==50);
+  if(mode==BlendMode::Lighten)assert(pixel.r==200&&pixel.g==150&&pixel.b==200);
+  if(mode==BlendMode::Add)assert(pixel.r==255&&pixel.g==250&&pixel.b==250);
+  if(mode==BlendMode::Difference)assert(pixel.r==100&&pixel.g==50&&pixel.b==150);
+  if(mode==BlendMode::Subtract)assert(pixel.r==0&&pixel.g==50&&pixel.b==150);
+ }
  // Reordering and visibility changes are also checkpointed as complete document states.
  Document stack_layers(1,1,"Layer order");
  stack_layers.add_layer(Layer("Blue",Image(1,1,{0,0,255,255})));
@@ -38,5 +51,5 @@ int main(){
  std::error_code remove_error;std::filesystem::remove(std::filesystem::u8path(unicode_path),remove_error);assert(!remove_error);
  bool threw=false;try{Document::load("not-a-project.ptdoc");}catch(const std::runtime_error&){threw=true;}assert(threw);
  Document stack(1,1);for(int n=0;n<25;++n){stack.set_name(std::to_string(n));stack.checkpoint("step");}int undos=0;while(stack.undo())++undos;assert(undos==20);
- std::cout<<"PASS: layer compositing, visibility, opacity, post-edit pixel undo/redo, redo-branch invalidation, layer-order/visibility undo/redo, document round-trip and overwrite, history/redo cap, invalid project rejection\n";
+ std::cout<<"PASS: layer compositing, visibility, opacity, post-edit pixel undo/redo, redo-branch invalidation, layer-order/visibility undo/redo, blend modes, document round-trip and overwrite, history/redo cap, invalid project rejection\n";
 }
