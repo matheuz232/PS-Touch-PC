@@ -31,7 +31,38 @@ void write_string(std::ostream& o,const std::string& s){if(s.size()>kMaxString)t
 std::string read_string(std::istream& i){auto n=read_le<uint32_t>(i);if(n>kMaxString)throw std::runtime_error("project string too long");std::string s(n,'\0');read_bytes(i,s.data(),n);return s;}
 uint8_t clamp(float v){return static_cast<uint8_t>(std::clamp(std::lround(v),0L,255L));}
 float blend_channel(float s,float d,BlendMode mode){switch(mode){case BlendMode::Darken:return std::min(s,d);case BlendMode::Multiply:return s*d;case BlendMode::Lighten:return std::max(s,d);case BlendMode::Screen:return 1.0f-(1.0f-s)*(1.0f-d);case BlendMode::Add:return std::min(1.0f,s+d);case BlendMode::Overlay:return d<0.5f?2.0f*s*d:1.0f-2.0f*(1.0f-s)*(1.0f-d);case BlendMode::Difference:return std::abs(d-s);case BlendMode::Subtract:return std::max(0.0f,d-s);default:return s;}}
-void composite_layer(Image& dst,const Layer& layer){if(!layer.visible||layer.opacity==0)return;for(uint32_t sy=0;sy<layer.image.height();++sy)for(uint32_t sx=0;sx<layer.image.width();++sx){int64_t dx=static_cast<int64_t>(layer.x)+sx,dy=static_cast<int64_t>(layer.y)+sy;if(dx<0||dy<0||dx>=dst.width()||dy>=dst.height())continue;const Pixel s=layer.image.at(sx,sy);Pixel& d=dst.at(static_cast<uint32_t>(dx),static_cast<uint32_t>(dy));const float sa=(s.a/255.0f)*(layer.opacity/255.0f), da=d.a/255.0f, oa=sa+da*(1.0f-sa);if(oa<=0){d={0,0,0,0};continue;}auto ch=[&](uint8_t sc,uint8_t dc){float sf=sc/255.0f,df=dc/255.0f,b=blend_channel(sf,df,layer.blend);return clamp(((1.0f-sa)*df*da+sa*((1.0f-da)*sf+da*b))/oa*255.0f);};d.r=ch(s.r,d.r);d.g=ch(s.g,d.g);d.b=ch(s.b,d.b);d.a=clamp(oa*255.0f);}}
+void composite_layer(Image& dst,const Layer& layer){
+    if(!layer.visible||layer.opacity==0)return;
+    // Clip once, rather than checking every source pixel against the canvas.
+    // This skips invisible off-canvas pixels and removes per-pixel bounds checks.
+    const int64_t left=layer.x, top=layer.y;
+    const int64_t right=left+layer.image.width(), bottom=top+layer.image.height();
+    const int64_t x0=std::max<int64_t>(0,left), y0=std::max<int64_t>(0,top);
+    const int64_t x1=std::min<int64_t>(dst.width(),right), y1=std::min<int64_t>(dst.height(),bottom);
+    if(x0>=x1||y0>=y1)return;
+    const uint32_t sx0=static_cast<uint32_t>(x0-left), sy0=static_cast<uint32_t>(y0-top);
+    const uint32_t copyWidth=static_cast<uint32_t>(x1-x0), copyHeight=static_cast<uint32_t>(y1-y0);
+    const auto& source=layer.image.pixels();
+    auto& destination=dst.mutable_pixels();
+    const size_t sourceWidth=layer.image.width(), destinationWidth=dst.width();
+    const float opacity=layer.opacity/255.0f;
+    for(uint32_t row=0;row<copyHeight;++row){
+        const size_t sourceStart=static_cast<size_t>(sy0+row)*sourceWidth+sx0;
+        const size_t destinationStart=static_cast<size_t>(static_cast<uint32_t>(y0)+row)*destinationWidth+static_cast<uint32_t>(x0);
+        for(uint32_t col=0;col<copyWidth;++col){
+            const Pixel& s=source[sourceStart+col];Pixel& d=destination[destinationStart+col];
+            const float sa=(s.a/255.0f)*opacity;
+            if(sa<=0.0f)continue;
+            const float da=d.a/255.0f, oa=sa+da*(1.0f-sa);
+            if(oa<=0.0f){d={0,0,0,0};continue;}
+            auto ch=[&](uint8_t sc,uint8_t dc){
+                const float sf=sc/255.0f,df=dc/255.0f,b=blend_channel(sf,df,layer.blend);
+                return clamp(((1.0f-sa)*df*da+sa*((1.0f-da)*sf+da*b))/oa*255.0f);
+            };
+            d.r=ch(s.r,d.r);d.g=ch(s.g,d.g);d.b=ch(s.b,d.b);d.a=clamp(oa*255.0f);
+        }
+    }
+}
 }
 Layer::Layer(std::string n,Image im):name(std::move(n)),image(std::move(im)){}
 Document::Document(uint32_t w,uint32_t h,std::string n):width_(w),height_(h),name_(std::move(n)){if(!w||!h||static_cast<uint64_t>(w)*h>100000000ULL)throw std::invalid_argument("invalid document dimensions");}
