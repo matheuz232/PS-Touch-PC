@@ -95,14 +95,14 @@ The ordinary **Salvar** command exports PNG/JPEG/BMP/TIFF or PSD; PSD export pre
 
 ### Iteration 20 — transaction history and canvas rotation
 
-Editor layer mutations now record the resulting document state after each completed operation. This aligns the Win32 layer actions with the native history model so undo restores the previous state and redo restores the edited state for visibility, opacity, layer add/remove/duplicate, text placement, mockup placement, filters and transforms. Regression coverage now follows this mutate-then-checkpoint transaction order.
+Editor layer mutations now checkpoint the pre-edit document state before changing pixels or layer structure. This aligns the Win32 layer actions with the native history model so undo restores the previous state and redo restores the edited state for visibility, opacity, layer add/remove/duplicate, text placement, mockup placement, filters and transforms.
 
 The rotate commands now rotate the complete document canvas and all layer pixels/offsets together, swapping canvas dimensions and preserving off-canvas placement where representable. This avoids clipping wide canvases or layers merely because a single layer's dimensions changed. A regression test covers rotation of a non-square canvas, offset transformation, composite output and undo/redo. The latest CI runs for these changes must complete before the Windows build can be considered verified.
 
 
 ### Iteration 21 — Win32 filter menu and expanded tonal controls
 
-The Windows shell now exposes the 100 photo-grade presets and native image operations from a **Filtros** popup menu. The core adds exposure compensation in EV, HSV hue rotation, black/white-point and gamma levels, and per-channel automatic contrast. These operations preserve alpha; hue rotation leaves neutral gray pixels neutral, levels validate the input range, and exposure is bounded to avoid unbounded values. The UI exposes practical preset actions for each operation while the core API accepts parameters for future dialogs/sliders. CI must pass on both Linux and Windows before this iteration is considered verified.
+The Windows shell now exposes the 100 photo-grade presets and native image operations from a **Filtros** popup menu. The core adds exposure compensation in EV, HSV hue rotation, black/white-point and gamma levels, and per-channel automatic contrast. These operations preserve alpha; hue rotation leaves neutral gray pixels neutral, levels validate the input range, and exposure is bounded to avoid unbounded values. The UI exposes practical preset actions for each operation while the core API accepts parameters for future dialogs/sliders. Filter commands now preview the applied result and allow confirmation or cancellation; cancellation restores the previous document state. CI must pass on both Linux and Windows before this iteration is considered verified.
 
 
 ### Iteration 22 — shadow/highlight recovery and channel color balance
@@ -122,6 +122,6 @@ Added global histogram equalization based on perceptual luminance. It expands to
 
 ### Iteration 25 — selectable adjustment strengths
 
-The Windows filter menu now exposes multiple selective-vibrance strengths (from -100% to +100%) and exposure compensation presets (-2 to +2 EV) instead of only a single fixed value for each operation. The options call the existing validated core functions and retain the standard document checkpoint/undo path. This provides practical parameter selection without allocating preview copies, keeping memory overhead low on older PCs; a live slider and non-destructive preview remain future UI work.
+The Windows filter menu now exposes multiple selective-vibrance strengths (from -100% to +100%) and exposure compensation presets (-2 to +2 EV) instead of only a single fixed value for each operation. The options call the existing validated core functions and retain the standard document checkpoint/undo path. This provides practical parameter selection while keeping memory overhead low on older PCs. Filter results are shown on the canvas with a confirmation prompt; choosing No cancels through Undo and restores the prior layer.
 
 The adjustable-strength menu also includes saturation values from -100% (grayscale) through +100%, allowing a more controlled workflow than the previous single-strength command. These selections use the existing core parameter validation and document history path.
