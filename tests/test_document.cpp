@@ -18,6 +18,20 @@ int main(){
  assert(d.can_redo()&&d.redo());assert(d.layers()[1].image.at(0,0).g==255);
  // A new edit after undo must discard the old redo branch.
  assert(d.undo());d.set_name("Branched edit");d.checkpoint("branch");assert(!d.can_redo());
+ // A failed in-place operation must restore the current checkpoint without
+ // consuming an undo step or reverting the preceding successful edit.
+ Document recovery(1,1,"Recovery");
+ recovery.add_layer(Layer("Pixels",Image(1,1,{255,0,0,255})));
+ recovery.checkpoint("initial");
+ recovery.mutable_layers()[0].image.at(0,0)={0,255,0,255};
+ recovery.checkpoint("successful edit");
+ recovery.mutable_layers()[0].image.at(0,0)={0,0,255,255}; // simulated partial failure
+ assert(recovery.restore_current_checkpoint());
+ auto restored=recovery.layers()[0].image.at(0,0);
+ assert(restored.r==0&&restored.g==255&&restored.b==0);
+ assert(recovery.can_undo()&&recovery.undo());
+ restored=recovery.layers()[0].image.at(0,0);
+ assert(restored.r==255&&restored.g==0&&restored.b==0);
  // Each supported blend mode is exercised with opaque source/destination pixels.
  const BlendMode modes[]={BlendMode::Darken,BlendMode::Multiply,BlendMode::Lighten,BlendMode::Screen,BlendMode::Add,BlendMode::Overlay,BlendMode::Difference,BlendMode::Subtract};
  for(const auto mode:modes){
