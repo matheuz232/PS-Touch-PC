@@ -5,6 +5,7 @@
 #include <windowsx.h>
 #include <commdlg.h>
 #include <gdiplus.h>
+#include "pstouch/image.hpp"
 #include <string>
 #include <memory>
 #include <algorithm>
@@ -53,6 +54,39 @@ std::unique_ptr<Bitmap> copy_bitmap(Bitmap& src) {
  Graphics g(out.get()); g.SetCompositingMode(CompositingModeSourceCopy); g.DrawImage(&src,0,0,src.GetWidth(),src.GetHeight());
  if(out->GetLastStatus()!=Ok) return {}; return out;
 }
+std::unique_ptr<pstouch::Image> to_core_image(Bitmap& bitmap) {
+ const UINT width=bitmap.GetWidth(), height=bitmap.GetHeight();
+ if(width==0 || height==0) return {};
+ auto image=std::make_unique<pstouch::Image>(width,height);
+ Rect rect(0,0,(INT)width,(INT)height); BitmapData data{};
+ if(bitmap.LockBits(&rect,ImageLockModeRead,PixelFormat32bppARGB,&data)!=Ok) return {};
+ bool ok=true;
+ for(INT y=0;y<data.Height;y++) {
+  const auto* row=reinterpret_cast<const BYTE*>(data.Scan0)+static_cast<ptrdiff_t>(y)*data.Stride;
+  for(INT x=0;x<data.Width;x++) {
+   const BYTE* p=row+static_cast<ptrdiff_t>(x)*4;
+   image->at((uint32_t)x,(uint32_t)y)=pstouch::Pixel{p[2],p[1],p[0],p[3]};
+  }
+ }
+ if(bitmap.UnlockBits(&data)!=Ok) ok=false;
+ return ok?std::move(image):std::unique_ptr<pstouch::Image>{};
+}
+std::unique_ptr<Bitmap> from_core_image(const pstouch::Image& image) {
+ auto bitmap=std::make_unique<Bitmap>(image.width(),image.height(),PixelFormat32bppARGB);
+ if(bitmap->GetLastStatus()!=Ok) return {};
+ Rect rect(0,0,(INT)image.width(),(INT)image.height()); BitmapData data{};
+ if(bitmap->LockBits(&rect,ImageLockModeWrite,PixelFormat32bppARGB,&data)!=Ok) return {};
+ for(INT y=0;y<data.Height;y++) {
+  auto* row=reinterpret_cast<BYTE*>(data.Scan0)+static_cast<ptrdiff_t>(y)*data.Stride;
+  for(INT x=0;x<data.Width;x++) {
+   const auto& pixel=image.at((uint32_t)x,(uint32_t)y);
+   BYTE* p=row+static_cast<ptrdiff_t>(x)*4;
+   p[0]=pixel.b; p[1]=pixel.g; p[2]=pixel.r; p[3]=pixel.a;
+  }
+ }
+ if(bitmap->UnlockBits(&data)!=Ok) return {};
+ return bitmap;
+}
 int encoder_clsid(const WCHAR* mime, CLSID* clsid) {
  UINT count=0,size=0; GetImageEncodersSize(&count,&size); if(!size) return -1;
  auto mem=std::make_unique<BYTE[]>(size); auto info=reinterpret_cast<ImageCodecInfo*>(mem.get());
@@ -70,11 +104,27 @@ void save_image() {
 void push_undo(){if(!g_image)return;auto c=copy_bitmap(*g_image);if(c){g_undo.push_back(std::move(c));if(g_undo.size()>20)g_undo.erase(g_undo.begin());}g_redo.clear();}
 void undo_image(){if(g_undo.empty()||!g_image)return;auto c=copy_bitmap(*g_image);if(c)g_redo.push_back(std::move(c));g_image=std::move(g_undo.back());g_undo.pop_back();InvalidateRect(g_hwnd,nullptr,FALSE);}
 void redo_image(){if(g_redo.empty()||!g_image)return;auto c=copy_bitmap(*g_image);if(c)g_undo.push_back(std::move(c));g_image=std::move(g_redo.back());g_redo.pop_back();InvalidateRect(g_hwnd,nullptr,FALSE);}
-void rotate_image(bool clockwise){if(!g_image)return;auto out=copy_bitmap(*g_image);if(!out)return;push_undo();if(out->RotateFlip(clockwise?Rotate90FlipNone:Rotate270FlipNone)!=Ok){if(!g_undo.empty())g_undo.pop_back();return;}g_image=std::move(out);InvalidateRect(g_hwnd,nullptr,FALSE);}
-void flip_image(bool horizontal){if(!g_image)return;auto out=copy_bitmap(*g_image);if(!out)return;push_undo();if(out->RotateFlip(horizontal?RotateNoneFlipX:RotateNoneFlipY)!=Ok){if(!g_undo.empty())g_undo.pop_back();return;}g_image=std::move(out);InvalidateRect(g_hwnd,nullptr,FALSE);}
-void apply_tone(bool sepia){if(!g_image)return;auto out=copy_bitmap(*g_image);if(!out)return;push_undo();Rect r(0,0,(INT)out->GetWidth(),(INT)out->GetHeight());BitmapData data{};if(out->LockBits(&r,ImageLockModeRead|ImageLockModeWrite,PixelFormat32bppARGB,&data)!=Ok){if(!g_undo.empty())g_undo.pop_back();return;}
- for(INT y=0;y<data.Height;y++){auto row=reinterpret_cast<BYTE*>(data.Scan0)+static_cast<ptrdiff_t>(y)*data.Stride;for(INT x=0;x<data.Width;x++){BYTE* p=row+x*4;double b=p[0],g=p[1],rr=p[2];double nr,ng,nb;if(sepia){nr=0.393*rr+0.769*g+0.189*b;ng=0.349*rr+0.686*g+0.168*b;nb=0.272*rr+0.534*g+0.131*b;}else{double gray=0.299*rr+0.587*g+0.114*b;nr=ng=nb=gray;}p[2]=(BYTE)std::clamp(nr,0.0,255.0);p[1]=(BYTE)std::clamp(ng,0.0,255.0);p[0]=(BYTE)std::clamp(nb,0.0,255.0);}}
- out->UnlockBits(&data);g_image=std::move(out);InvalidateRect(g_hwnd,nullptr,FALSE);}
+void rotate_image(bool clockwise){
+ if(!g_image)return;
+ auto source=to_core_image(*g_image); if(!source)return;
+ auto transformed=clockwise?pstouch::rotate_90_clockwise(*source):pstouch::rotate_90_counterclockwise(*source);
+ auto out=from_core_image(transformed); if(!out)return;
+ push_undo(); g_image=std::move(out); InvalidateRect(g_hwnd,nullptr,FALSE);
+}
+void flip_image(bool horizontal){
+ if(!g_image)return;
+ auto out=to_core_image(*g_image); if(!out)return;
+ if(horizontal)pstouch::flip_horizontal(*out);else pstouch::flip_vertical(*out);
+ auto bitmap=from_core_image(*out); if(!bitmap)return;
+ push_undo(); g_image=std::move(bitmap); InvalidateRect(g_hwnd,nullptr,FALSE);
+}
+void apply_tone(bool use_sepia){
+ if(!g_image)return;
+ auto out=to_core_image(*g_image); if(!out)return;
+ if(use_sepia)pstouch::sepia(*out);else pstouch::grayscale(*out);
+ auto bitmap=from_core_image(*out); if(!bitmap)return;
+ push_undo(); g_image=std::move(bitmap); InvalidateRect(g_hwnd,nullptr,FALSE);
+}
 void open_image() { wchar_t path[MAX_PATH]{}; OPENFILENAMEW ofn{}; ofn.lStructSize=sizeof(ofn); ofn.hwndOwner=g_hwnd; ofn.lpstrFilter=L"Images\0*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff\0All files\0*.*\0"; ofn.lpstrFile=path; ofn.nMaxFile=MAX_PATH; ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST; if(GetOpenFileNameW(&ofn)){ auto candidate=std::make_unique<Bitmap>(path); if(candidate->GetLastStatus()==Ok){g_image=std::move(candidate);g_path=path;g_zoom=1.0f;g_undo.clear();g_redo.clear();} else MessageBoxW(g_hwnd,L"Não foi possível abrir esta imagem. Use PNG, JPEG, BMP ou TIFF nesta versão.",L"PS Touch PC",MB_ICONWARNING); InvalidateRect(g_hwnd,nullptr,TRUE); } }
 void start_mockup() {
  if(!g_image){MessageBoxW(g_hwnd,L"Abra primeiro uma foto do produto ou uma imagem-base para o mockup.",L"PS Touch PC",MB_OK|MB_ICONINFORMATION);return;}
