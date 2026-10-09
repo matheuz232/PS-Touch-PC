@@ -56,8 +56,7 @@ jobs:
 
           $vcpkgBin = Join-Path $env:VCPKG_INSTALLATION_ROOT "installed/x64-windows/bin"
           $runtimeDlls = Get-ChildItem $vcpkgBin -File -Filter "*.dll" |
-            Where-Object { $_.Name -match '^(libpng.*|jpeg.*|turbojpeg.*|zlib.*)\.dll
- }
+            Where-Object { $_.Name -match '^(libpng.*|jpeg.*|turbojpeg.*|zlib.*)[.]dll$' }
           if (!$runtimeDlls -or $runtimeDlls.Count -eq 0) {
             throw "Could not locate the PNG/JPEG/Zlib runtime DLLs in vcpkg."
           }
