@@ -40,7 +40,7 @@ void save_psd_layers(const Document& document,const std::string& path){
  if(document.width()>30000||document.height()>30000)throw std::length_error("PSD dimensions exceed version-1 limits");
  auto put16=[](std::ostream& o,uint16_t v){be16(o,v);};
  auto put32=[](std::ostream& o,uint32_t v){be32(o,v);};
- std::ostringstream info(std::ios::binary),records(std::ios::binary),channels(std::ios::binary);
+ std::ostringstream info(std::ios::out|std::ios::binary),records(std::ios::binary),channels(std::ios::binary);
  put16(info,static_cast<uint16_t>(layers.size()));
  for(auto it=layers.rbegin();it!=layers.rend();++it){
   const auto& l=*it;
@@ -51,7 +51,7 @@ void save_psd_layers(const Document& document,const std::string& path){
   put16(records,4);
   for(int16_t id : {-1,0,1,2}){put16(records,static_cast<uint16_t>(id));const uint64_t len=2ULL+static_cast<uint64_t>(l.image.width())*l.image.height();if(len>0xffffffffULL)throw std::length_error("PSD layer channel too large");put32(records,static_cast<uint32_t>(len));}
   records.write("8BIM",4);records.write("norm",4);records.put(static_cast<char>(l.opacity));records.put(0);records.put(static_cast<char>(l.visible?0:2));records.put(0);
-  std::ostringstream extra(std::ios::binary);put32(extra,0);put32(extra,0);
+  std::ostringstream extra(std::ios::out|std::ios::binary);put32(extra,0);put32(extra,0);
   const uint8_t nameLen=static_cast<uint8_t>(l.name.size());extra.put(static_cast<char>(nameLen));extra.write(l.name.data(),nameLen);
   const size_t nameBytes=1+l.name.size();for(size_t n=nameBytes;n%4;++n)extra.put(0);
   const auto extraData=extra.str();put32(records,static_cast<uint32_t>(extraData.size()));records.write(extraData.data(),static_cast<std::streamsize>(extraData.size()));
@@ -59,7 +59,7 @@ void save_psd_layers(const Document& document,const std::string& path){
  }
  const auto rec=records.str(),ch=channels.str();info.write(rec.data(),static_cast<std::streamsize>(rec.size()));info.write(ch.data(),static_cast<std::streamsize>(ch.size()));
  if(!info)throw std::runtime_error("could not assemble PSD layer information");
- std::ostringstream layerMask(std::ios::binary);const auto li=info.str();put32(layerMask,static_cast<uint32_t>(li.size()+4));put32(layerMask,static_cast<uint32_t>(li.size()));layerMask.write(li.data(),static_cast<std::streamsize>(li.size()));put32(layerMask,0);
+ std::ostringstream layerMask(std::ios::out|std::ios::binary);const auto li=info.str();put32(layerMask,static_cast<uint32_t>(li.size()+4));put32(layerMask,static_cast<uint32_t>(li.size()));layerMask.write(li.data(),static_cast<std::streamsize>(li.size()));put32(layerMask,0);
  const auto lm=layerMask.str();if(lm.size()>0xffffffffULL)throw std::length_error("PSD layer information too large");
  const Image merged=document.composite();const auto destination=std::filesystem::u8path(path);auto tmp=destination;tmp+=".tmp";
  try{
