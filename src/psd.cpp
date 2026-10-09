@@ -59,7 +59,7 @@ void save_psd_layers(const Document& document,const std::string& path){
  }
  const auto rec=records.str(),ch=channels.str();info.write(rec.data(),static_cast<std::streamsize>(rec.size()));info.write(ch.data(),static_cast<std::streamsize>(ch.size()));
  if(!info)throw std::runtime_error("could not assemble PSD layer information");
- std::ostringstream layerMask(std::ios::out|std::ios::binary);const auto li=info.str();put32(layerMask,static_cast<uint32_t>(li.size()+4));put32(layerMask,static_cast<uint32_t>(li.size()));layerMask.write(li.data(),static_cast<std::streamsize>(li.size()));put32(layerMask,0);
+ std::ostringstream layerMask(std::ios::out|std::ios::binary);const auto li=info.str();put32(layerMask,static_cast<uint32_t>(li.size()));layerMask.write(li.data(),static_cast<std::streamsize>(li.size()));put32(layerMask,0);
  const auto lm=layerMask.str();if(lm.size()>0xffffffffULL)throw std::length_error("PSD layer information too large");
  const Image merged=document.composite();const auto destination=std::filesystem::u8path(path);auto tmp=destination;tmp+=".tmp";
  try{
