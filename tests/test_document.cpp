@@ -28,7 +28,7 @@ int main(){
  assert(stack_layers.composite().at(0,0).b==255);
  assert(stack_layers.undo()&&stack_layers.composite().at(0,0).r==255);
  assert(stack_layers.redo()&&stack_layers.composite().at(0,0).b==255);
- stack_layers.set_layer_visibility(0,false);stack_layers.checkpoint("hide top layer");
+ stack_layers.set_layer_visibility(1,false);stack_layers.checkpoint("hide top layer");
  assert(stack_layers.composite().at(0,0).r==255);
  assert(stack_layers.undo()&&stack_layers.composite().at(0,0).b==255);
  d.save("pstouch-test.ptdoc");Document r=Document::load("pstouch-test.ptdoc");assert(r.name()=="Renamed"&&r.width()==2&&r.layers().size()==2);assert(r.layers()[0].name=="Background"&&r.layers()[1].name=="Paint");assert(r.composite().at(0,0).r==128);d.set_name("Saved Again");d.save("pstouch-test.ptdoc");Document overwritten=Document::load("pstouch-test.ptdoc");assert(overwritten.name()=="Saved Again");std::remove("pstouch-test.ptdoc");
