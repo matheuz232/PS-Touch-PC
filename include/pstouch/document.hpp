@@ -44,6 +44,7 @@ public:
 private:
     struct State { std::string label; uint32_t width{},height{}; std::string name; std::vector<Layer> layers; };
     State snapshot(std::string label) const;
+    static uint64_t estimate_state_bytes(const State& state) noexcept;
     void restore(const State& state);
     uint32_t width_,height_; std::string name_; std::vector<Layer> layers_;
     std::vector<State> history_; size_t history_cursor_{0}; static constexpr size_t kMaxHistory=21;
