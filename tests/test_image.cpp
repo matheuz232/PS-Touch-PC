@@ -13,6 +13,10 @@ int main() {
     unpremultiply_alpha(half); assert(half.at(0,0).r==100 && half.at(0,0).g==50);
     Image dst(2,2,{0,0,255,255}); Image src(1,1,{255,0,0,128}); source_over(dst,src,0,0);
     assert(dst.at(0,0).r==128 && dst.at(0,0).b==127 && dst.at(0,0).a==255);
+    Image translucentDst(1,1,{0,100,200,128});Image translucentSrc(1,1,{200,100,0,128});source_over(translucentDst,translucentSrc,0,0);
+    assert(translucentDst.at(0,0).r==134&&translucentDst.at(0,0).g==100&&translucentDst.at(0,0).b==67&&translucentDst.at(0,0).a==192);
+    Image transparentDst(1,1,{91,82,73,0});Image transparentSrc(1,1,{20,40,60,0});source_over(transparentDst,transparentSrc,0,0);
+    assert(transparentDst.at(0,0).r==0&&transparentDst.at(0,0).g==0&&transparentDst.at(0,0).b==0&&transparentDst.at(0,0).a==0);
     source_over(dst,src,-1,-1); assert(dst.at(1,1).b==255);
     Image corner(2,2,{0,255,0,255});source_over(dst,corner,1,1);
     assert(dst.at(1,1).g==255&&dst.at(1,1).r==0);
