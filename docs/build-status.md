@@ -64,3 +64,9 @@ Added a Win32 mockup-placement prototype: user opens a base/product photo, impor
 - Refocused the README roadmap on the editor's own document model, layers, PSD I/O, masks, transforms and selection tools.
 - Added Win32 toolbar commands for 90-degree rotation in both directions and horizontal/vertical flipping. Each transform snapshots the previous image so Ctrl+Z can undo it; transform controls are hidden while mockup placement is active to preserve the Apply/Cancel interaction.
 - These new GUI commands are committed but still require Windows/MSVC CI verification. The Win32 shell remains separate from the native document/layer core; wiring that integration is the next major engineering task.
+
+
+## Iteration 16 — custom font discovery
+- Added `fonts/README.txt` as the drop-in location for custom `.ttf`, `.otf` and `.ttc` files.
+- At startup, the Win32 shell creates/scans the folder beside the executable and loads supported files privately into the process; successfully loaded file count is shown in the status bar. Loaded fonts are released on shutdown and are not installed system-wide.
+- Font discovery code and toolbar syntax correction are committed. Windows/MSVC CI must confirm the build; the current text tool is still not implemented, so this stage loads fonts for future text features rather than providing font selection in a text editor.
