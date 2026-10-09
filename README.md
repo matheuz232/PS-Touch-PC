@@ -9,7 +9,8 @@ This is the first platform-neutral native-core experiment derived from the APK's
 - Native document/layer model with layer order, visibility, opacity, offsets, and nine blend modes modeled on the blend-mode list found in the decompiled application.
 - A versioned, bounded custom `.ptdoc` project format for round-tripping RGBA layer pixels and metadata.
 - PSD v1 import for flattened 8-bit RGB/RGBA (raw and PackBits RLE) and layered 8-bit RGB documents with raw or PackBits RLE layer channels; export is available both as flattened images and editable layer stacks. The Win32 shell opens layered PSD into native layers and exports PSD from the current layer stack. PSD file operations accept UTF-8 paths, including non-ASCII filenames on Windows. Layer masks and adjustment layers are not supported by the layered importer.
-- Layer operations: duplicate, rename, reorder, visibility, opacity, and snapshot-based undo/redo history with a 20-step cap.
+- Layer operations: duplicate, rename, reorder, visibility, opacity, and snapshot-based undo/redo history with a 20-step cap and a 128 MiB estimated history-memory budget. Older snapshots are discarded first; if a single snapshot would exceed the budget, history is cleared rather than allocating another huge copy.
+- Low-memory performance work: layer compositing clips each layer to the visible canvas before iterating, skips off-canvas pixels, and uses contiguous row-major pixel access to avoid per-pixel bounds checks. This reduces unnecessary CPU work for partially visible or oversized layers.
 - Alpha premultiplication/unpremultiplication.
 - Straight-alpha source-over compositing.
 - Bilinear image resampling, crop, horizontal/vertical flip, 90-degree rotation, grayscale, sepia, and saturation adjustment.
