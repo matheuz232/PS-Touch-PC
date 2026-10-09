@@ -109,6 +109,7 @@ void Document::checkpoint(std::string label){
 }
 bool Document::undo(){if(history_cursor_<=1)return false;--history_cursor_;restore(history_[history_cursor_-1]);return true;}
 bool Document::redo(){if(history_cursor_>=history_.size())return false;restore(history_[history_cursor_]);++history_cursor_;return true;}
+bool Document::restore_current_checkpoint(){if(history_cursor_==0||history_cursor_>history_.size())return false;restore(history_[history_cursor_-1]);return true;}
 bool Document::can_undo()const noexcept{return history_cursor_>1;}bool Document::can_redo()const noexcept{return history_cursor_<history_.size();}
 const std::string& Document::undo_label()const noexcept{static const std::string empty;return can_undo()?history_[history_cursor_-1].label:empty;}
 const std::string& Document::redo_label()const noexcept{static const std::string empty;return can_redo()?history_[history_cursor_].label:empty;}
