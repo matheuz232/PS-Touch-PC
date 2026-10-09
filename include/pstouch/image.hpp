@@ -31,4 +31,6 @@ Image rotate_90_counterclockwise(const Image& image);
 void grayscale(Image& image);
 void sepia(Image& image);
 void adjust_saturation(Image& image, float amount); // -1 removes saturation, +1 doubles it
+void invert_colors(Image& image);
+void posterize(Image& image, uint16_t levels); // 2..256 tonal levels per RGB channel
 }
