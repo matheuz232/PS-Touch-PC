@@ -133,8 +133,46 @@ void gaussian_blur(Image& image,float sigma){
 }
 void sharpen(Image& image,float amount){
     if(!std::isfinite(amount)||amount<0.0f||amount>5.0f)throw std::invalid_argument("sharpen amount must be in [0, 5]");
-    if(amount==0.0f)return;Image blurred=image;gaussian_blur(blurred,1.0f);auto& dst=image.mutable_pixels();const auto& base=blurred.pixels();
-    for(size_t i=0;i<dst.size();++i){auto channel=[&](uint8_t a,uint8_t b){return clamp_byte(static_cast<float>(a)+(static_cast<float>(a)-b)*amount);};dst[i].r=channel(dst[i].r,base[i].r);dst[i].g=channel(dst[i].g,base[i].g);dst[i].b=channel(dst[i].b,base[i].b);}
+    if(amount==0.0f)return;
+    // Fuse unsharp masking with the vertical blur pass. Only one full-frame
+    // temporary is needed, instead of a copied Image plus gaussian_blur's buffer.
+    constexpr float sigma=1.0f;
+    constexpr int radius=3;
+    std::array<float,7> kernel{};
+    float sum=0.0f;
+    for(int i=-radius;i<=radius;++i){
+        const float value=std::exp(-static_cast<float>(i*i)/(2.0f*sigma*sigma));
+        kernel[static_cast<size_t>(i+radius)]=value;
+        sum+=value;
+    }
+    for(auto& value:kernel)value/=sum;
+    const uint32_t w=image.width(),h=image.height();
+    const auto& src=image.pixels();
+    std::vector<Pixel> horizontal(src.size());
+    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){
+        float channels[4]={0,0,0,0};
+        for(int k=-radius;k<=radius;++k){
+            const auto xx=static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(x)+k,0,static_cast<int64_t>(w)-1));
+            const auto& p=src[static_cast<size_t>(y)*w+xx];
+            const float weight=kernel[static_cast<size_t>(k+radius)];
+            channels[0]+=p.r*weight;channels[1]+=p.g*weight;
+            channels[2]+=p.b*weight;channels[3]+=p.a*weight;
+        }
+        horizontal[static_cast<size_t>(y)*w+x]={clamp_byte(channels[0]),clamp_byte(channels[1]),clamp_byte(channels[2]),clamp_byte(channels[3])};
+    }
+    auto& dst=image.mutable_pixels();
+    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){
+        float channels[3]={0,0,0};
+        for(int k=-radius;k<=radius;++k){
+            const auto yy=static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(y)+k,0,static_cast<int64_t>(h)-1));
+            const auto& p=horizontal[static_cast<size_t>(yy)*w+x];
+            const float weight=kernel[static_cast<size_t>(k+radius)];
+            channels[0]+=p.r*weight;channels[1]+=p.g*weight;channels[2]+=p.b*weight;
+        }
+        auto& out=dst[static_cast<size_t>(y)*w+x];
+        const auto channel=[&](uint8_t original,float blurred){return clamp_byte(static_cast<float>(original)+(static_cast<float>(original)-clamp_byte(blurred))*amount);};
+        out.r=channel(out.r,channels[0]);out.g=channel(out.g,channels[1]);out.b=channel(out.b,channels[2]);
+    }
 }
 void edge_detect(Image& image){
     const uint32_t w=image.width(),h=image.height();
