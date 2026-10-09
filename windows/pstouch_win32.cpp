@@ -142,29 +142,29 @@ bool initialize_document_from_bitmap(Bitmap& bitmap,const std::string& name) {
 bool add_transparent_layer(const std::string& name) {
  if(!g_document) return false;
  try {
-  g_document->checkpoint("Add layer");
   g_selected_layer=g_document->add_layer(pstouch::Layer(name,pstouch::Image(g_document->width(),g_document->height(),{0,0,0,0})));
+  g_document->checkpoint("Add layer");
   render_document(); return true;
  } catch(...) { return false; }
 }
 void toggle_selected_visibility(){
  if(!g_document||g_document->layers().empty())return;
  const auto& layer=g_document->layers()[g_selected_layer];
- g_document->checkpoint("Toggle layer visibility"); g_document->set_layer_visibility(g_selected_layer,!layer.visible); render_document();
+ g_document->set_layer_visibility(g_selected_layer,!layer.visible); g_document->checkpoint("Toggle layer visibility"); render_document();
 }
 void duplicate_selected_layer(){
  if(!g_document||g_document->layers().empty())return;
- try{g_document->checkpoint("Duplicate layer");g_selected_layer=g_document->duplicate_layer(g_selected_layer);render_document();}catch(...){MessageBoxW(g_hwnd,L"Não foi possível duplicar a camada.",L"PS Touch PC",MB_OK|MB_ICONWARNING);}
+ try{g_selected_layer=g_document->duplicate_layer(g_selected_layer);g_document->checkpoint("Duplicate layer");render_document();}catch(...){MessageBoxW(g_hwnd,L"Não foi possível duplicar a camada.",L"PS Touch PC",MB_OK|MB_ICONWARNING);}
 }
 void remove_selected_layer(){
  if(!g_document||g_document->layers().size()<2){MessageBoxW(g_hwnd,L"O documento precisa manter pelo menos uma camada.",L"PS Touch PC",MB_OK|MB_ICONINFORMATION);return;}
- g_document->checkpoint("Remove layer");g_document->remove_layer(g_selected_layer);if(g_selected_layer>=g_document->layers().size())g_selected_layer=g_document->layers().size()-1;render_document();
+ g_document->remove_layer(g_selected_layer);if(g_selected_layer>=g_document->layers().size())g_selected_layer=g_document->layers().size()-1;g_document->checkpoint("Remove layer");render_document();
 }
 void rotate_image(bool clockwise){
  if(!g_document||g_document->layers().empty())return;
  try {
-  g_document->checkpoint(clockwise?"Rotate canvas clockwise":"Rotate canvas counterclockwise");
   g_document->rotate_canvas(clockwise);
+  g_document->checkpoint(clockwise?"Rotate canvas clockwise":"Rotate canvas counterclockwise");
   render_document();
  } catch(const std::exception&) {
   MessageBoxW(g_hwnd,L"Não foi possível girar o documento sem perder conteúdo.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
@@ -172,17 +172,15 @@ void rotate_image(bool clockwise){
 }
 void flip_image(bool horizontal){
  if(!g_document||g_document->layers().empty())return;
- g_document->checkpoint("Flip layer");
  auto& image=g_document->mutable_layers()[g_selected_layer].image;
  if(horizontal)pstouch::flip_horizontal(image);else pstouch::flip_vertical(image);
- render_document();
+ g_document->checkpoint("Flip layer"); render_document();
 }
 void apply_tone(bool use_sepia){
  if(!g_document||g_document->layers().empty())return;
- g_document->checkpoint(use_sepia?"Sepia layer":"Grayscale layer");
  auto& image=g_document->mutable_layers()[g_selected_layer].image;
  if(use_sepia)pstouch::sepia(image);else pstouch::grayscale(image);
- render_document();
+ g_document->checkpoint(use_sepia?"Sepia layer":"Grayscale layer"); render_document();
 }
 void apply_photo_filter_command(UINT command) {
  if(!g_document || g_document->layers().empty()) {
@@ -191,12 +189,11 @@ void apply_photo_filter_command(UINT command) {
  }
  auto& image=g_document->mutable_layers()[g_selected_layer].image;
  try {
-  // Capture the pre-edit state before any pixels are changed so Undo restores
-  // the actual original layer rather than a duplicate of the filtered result.
-  g_document->checkpoint("Apply image filter");
   if(command>=2000 && command<2100) {
    const auto preset=static_cast<pstouch::PhotoPreset>(command-2000);
    pstouch::apply_photo_preset(image,preset);
+   const auto name=pstouch::photo_preset_name(preset);
+   g_document->checkpoint(("Photo preset: "+name).c_str());
   } else {
    switch(command) {
     case 1001: pstouch::invert_colors(image); break;
@@ -286,6 +283,7 @@ void apply_photo_filter_command(UINT command) {
     }
     default: return;
    }
+   g_document->checkpoint("Apply image filter");
   }
   render_document();
   if(MessageBoxW(g_hwnd,L"Pré-visualização do filtro aplicada.\n\nDeseja manter o resultado?\n\nSim: confirmar e manter.\nNão: cancelar e restaurar a camada.",L"Pré-visualização do filtro",MB_YESNO|MB_ICONQUESTION)==IDNO) {
@@ -510,7 +508,7 @@ void commit_mockup(){
  Graphics gr(design.get());gr.Clear(Color(0,0,0,0));gr.SetCompositingMode(CompositingModeSourceOver);gr.SetInterpolationMode(InterpolationModeHighQualityBicubic);
  if(gr.DrawImage(g_mockup_design.get(),Rect(x,y,ow,oh))!=Ok){MessageBoxW(g_hwnd,L"Falha ao compor o mockup.",L"PS Touch PC",MB_OK|MB_ICONERROR);return;}
  auto pixels=to_core_image(*design);if(!pixels)return;
- try{g_document->checkpoint("Place mockup artwork");g_selected_layer=g_document->add_layer(pstouch::Layer("Mockup artwork",std::move(*pixels)));g_mockup_design.reset();render_document();}
+ try{g_selected_layer=g_document->add_layer(pstouch::Layer("Mockup artwork",std::move(*pixels)));g_document->checkpoint("Place mockup artwork");g_mockup_design.reset();render_document();}
  catch(...){MessageBoxW(g_hwnd,L"Não foi possível criar a camada do mockup.",L"PS Touch PC",MB_OK|MB_ICONERROR);}
 }
 
@@ -541,7 +539,7 @@ void commit_text() {
  PointF origin((REAL)g_text_image_x,(REAL)g_text_image_y);
  if(gr.DrawString(g_text_input.c_str(),(INT)g_text_input.size(),&text_font,origin,&brush)!=Ok){g_text_capturing=false;g_text_input.clear();return;}
  auto pixels=to_core_image(*text_layer);
- if(pixels&&g_document){try{g_document->checkpoint("Add text layer");g_selected_layer=g_document->add_layer(pstouch::Layer("Text",std::move(*pixels)));render_document();}catch(...){MessageBoxW(g_hwnd,L"Não foi possível criar a camada de texto.",L"PS Touch PC",MB_OK|MB_ICONERROR);}}
+ if(pixels&&g_document){try{g_selected_layer=g_document->add_layer(pstouch::Layer("Text",std::move(*pixels)));g_document->checkpoint("Add text layer");render_document();}catch(...){MessageBoxW(g_hwnd,L"Não foi possível criar a camada de texto.",L"PS Touch PC",MB_OK|MB_ICONERROR);}}
  g_text_capturing=false; g_text_mode=false; g_text_input.clear(); InvalidateRect(g_hwnd,nullptr,FALSE);
 }
 void draw_ui(HDC dc, RECT c) {
@@ -607,7 +605,7 @@ LRESULT CALLBACK wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){switch(msg){cas
   int row_y=76+130;
   for(size_t i=g_document->layers().size();i>0;--i){size_t idx=i-1;int yy=row_y+(int)(g_document->layers().size()-i)*34;if(yy+30>=client.bottom-26-8)break;if(y>=yy&&y<yy+30){g_selected_layer=idx;InvalidateRect(hwnd,nullptr,FALSE);return 0;}}
   int bar_y=client.bottom-26-54;
-  if(y>=bar_y-5&&y<=bar_y+10){int range=std::max(1,client_w-230-28);int value=std::clamp((x-(rx+14))*255/range,0,255);g_document->checkpoint("Change layer opacity");g_document->set_layer_opacity(g_selected_layer,(uint8_t)value);render_document();return 0;}
+  if(y>=bar_y-5&&y<=bar_y+10){int range=std::max(1,client_w-230-28);int value=std::clamp((x-(rx+14))*255/range,0,255);g_document->set_layer_opacity(g_selected_layer,(uint8_t)value);g_document->checkpoint("Change layer opacity");render_document();return 0;}
  }
 }
 if(y>=43&&y<=67&&x>=1112&&x<=1190){POINT p{x,y+24};ClientToScreen(hwnd,&p);show_filter_menu(hwnd,p.x,p.y);}else if(y>=43&&y<=67&&x>=944&&x<=1020)open_project();else if(y>=43&&y<=67&&x>=1026&&x<=1104)save_project();else if(y>=43&&y<=67&&x>=12&&x<=86)open_image();else if(y>=43&&y<=67&&x>=94&&x<=168)save_image();else if(y>=43&&y<=67&&x>=176&&x<=252)undo_image();else if(y>=43&&y<=67&&x>=260&&x<=338)redo_image();else if(y>=43&&y<=67&&x>=346&&x<=430)apply_tone(false);else if(y>=43&&y<=67&&x>=438&&x<=522)apply_tone(true);else if(y>=43&&y<=67&&x>=530&&x<=614)start_mockup();else if(g_mockup_design&&y>=43&&y<=67&&x>=622&&x<=704)commit_mockup();else if(g_mockup_design&&y>=43&&y<=67&&x>=712&&x<=794)cancel_mockup();else if(!g_mockup_design&&y>=43&&y<=67&&x>=622&&x<=696)rotate_image(false);else if(!g_mockup_design&&y>=43&&y<=67&&x>=702&&x<=776)rotate_image(true);else if(!g_mockup_design&&y>=43&&y<=67&&x>=782&&x<=856)flip_image(true);else if(!g_mockup_design&&y>=43&&y<=67&&x>=862&&x<=936)flip_image(false);return 0;}case WM_MOUSEWHEEL:{short d=GET_WHEEL_DELTA_WPARAM(wp);if(g_mockup_design)g_mockup_scale=std::clamp(g_mockup_scale+(d>0?0.03f:-0.03f),0.05f,1.5f);else g_zoom=std::clamp(g_zoom+(d>0?0.1f:-0.1f),0.1f,4.0f);InvalidateRect(hwnd,nullptr,FALSE);return 0;}case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT r;GetClientRect(hwnd,&r);draw_ui(dc,r);EndPaint(hwnd,&ps);return 0;}case WM_DESTROY:unload_custom_fonts();PostQuitMessage(0);return 0;}return DefWindowProcW(hwnd,msg,wp,lp);}
