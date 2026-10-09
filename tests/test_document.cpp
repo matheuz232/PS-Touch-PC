@@ -12,6 +12,12 @@ int main(){
  d.mutable_layers()[1].visible=false;c=d.composite();assert(c.at(0,0).r==0&&c.at(0,0).b==255);
  d.mutable_layers()[1].visible=true;d.mutable_layers()[1].opacity=128;c=d.composite();assert(c.at(0,0).r==64&&c.at(0,0).b==191);
  d.mutable_layers()[1].opacity=255;d.checkpoint("before rename");d.set_name("Renamed");d.checkpoint("rename");assert(d.undo_label()=="rename");assert(d.undo()&&d.name()=="Test Document");assert(d.redo()&&d.name()=="Renamed");
+ // History snapshots are post-edit states: undo restores the prior pixels and redo restores the edit.
+ d.mutable_layers()[1].image.at(0,0)={0,255,0,255};d.checkpoint("paint pixel");
+ assert(d.can_undo()&&d.undo());assert(d.layers()[1].image.at(0,0).r==255&&d.layers()[1].image.at(0,0).g==0);
+ assert(d.can_redo()&&d.redo());assert(d.layers()[1].image.at(0,0).g==255);
+ // A new edit after undo must discard the old redo branch.
+ assert(d.undo());d.set_name("Branched edit");d.checkpoint("branch");assert(!d.can_redo());
  d.save("pstouch-test.ptdoc");Document r=Document::load("pstouch-test.ptdoc");assert(r.name()=="Renamed"&&r.width()==2&&r.layers().size()==2);assert(r.layers()[0].name=="Background"&&r.layers()[1].name=="Paint");assert(r.composite().at(0,0).r==128);d.set_name("Saved Again");d.save("pstouch-test.ptdoc");Document overwritten=Document::load("pstouch-test.ptdoc");assert(overwritten.name()=="Saved Again");std::remove("pstouch-test.ptdoc");
  const std::string unicode_path=u8"pstouch-projeto-a\u00e7\u00e3o-\u65e5\u672c.ptdoc";
  d.save(unicode_path);Document unicode_roundtrip=Document::load(unicode_path);
@@ -19,5 +25,5 @@ int main(){
  std::error_code remove_error;std::filesystem::remove(std::filesystem::u8path(unicode_path),remove_error);assert(!remove_error);
  bool threw=false;try{Document::load("not-a-project.ptdoc");}catch(const std::runtime_error&){threw=true;}assert(threw);
  Document stack(1,1);for(int n=0;n<25;++n){stack.set_name(std::to_string(n));stack.checkpoint("step");}int undos=0;while(stack.undo())++undos;assert(undos==20);
- std::cout<<"PASS: layer compositing, visibility, opacity, document round-trip and overwrite, history/redo cap, invalid project rejection\n";
+ std::cout<<"PASS: layer compositing, visibility, opacity, post-edit pixel undo/redo, redo-branch invalidation, document round-trip and overwrite, history/redo cap, invalid project rejection\n";
 }
