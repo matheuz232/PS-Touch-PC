@@ -22,5 +22,12 @@ int main(){
  pstouch::Image shade(3,3,{200,200,200,255});pstouch::vignette(shade,1.0f);assert(shade.at(1,1).r>shade.at(0,0).r);
  pstouch::Image blocks(2,1,{0,0,0,255});blocks.at(1,0)={200,100,50,255};pstouch::pixelate(blocks,2);assert(blocks.at(0,0).r==100&&blocks.at(1,0).r==100);
  bad=false;try{pstouch::gaussian_blur(blur,0.0f);}catch(const std::invalid_argument&){bad=true;}assert(bad);bad=false;try{pstouch::pixelate(blocks,0);}catch(const std::invalid_argument&){bad=true;}assert(bad);
+
+ pstouch::Image exposure(1,1,{40,80,120,91});pstouch::adjust_exposure(exposure,1.0f);assert(exposure.at(0,0).r==80&&exposure.at(0,0).g==160&&exposure.at(0,0).b==240&&exposure.at(0,0).a==91);
+ pstouch::Image hue(1,1,{255,0,0,73});pstouch::adjust_hue(hue,120.0f);assert(hue.at(0,0).g>240&&hue.at(0,0).r<10&&hue.at(0,0).a==73);
+ pstouch::Image levels(3,1,{20,30,40,255});levels.at(1,0)={120,130,140,100};levels.at(2,0)={220,230,240,0};pstouch::adjust_levels(levels,20,220,1.0f);assert(levels.at(0,0).r==0&&levels.at(2,0).r==255&&levels.at(1,0).a==100);
+ pstouch::Image autoC(2,1,{20,50,100,64});autoC.at(1,0)={220,150,200,128};pstouch::auto_contrast(autoC);assert(autoC.at(0,0).r==0&&autoC.at(1,0).r==255&&autoC.at(0,0).g==0&&autoC.at(1,0).g==255&&autoC.at(0,0).a==64&&autoC.at(1,0).a==128);
+ bad=false;try{pstouch::adjust_levels(levels,128,128);}catch(const std::invalid_argument&){bad=true;}assert(bad);
+
  std::cout<<"PASS: transforms, color filters, 100% core ops, blur, sharpen, edges, gamma, temperature, vignette and pixelation\\n";
 }
