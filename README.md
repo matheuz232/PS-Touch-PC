@@ -48,7 +48,7 @@ A first Win32 desktop shell now lives in `windows/pstouch_win32.cpp`. It uses pe
 Portable packaging notes are in `portable/README.txt`. The intended release is a folder containing the EXE, required redistributable runtime files and resources, with configuration/cache/log paths kept beside the application. No installer is planned. The Linux sandbox used for this iteration does not provide an MSVC/Windows GUI runtime, so the Win32 target has not been compiled or executed here.
 
 ### Historical iteration 12 — first interactive editing commands
-The Win32 shell now includes native Save As (PNG/JPEG/BMP/TIFF encoders), grayscale and sepia commands, a bounded 20-snapshot undo history, redo, and Ctrl+S/Ctrl+Z/Ctrl+Y shortcuts. These commands currently operate on a GDI+ bitmap owned by the UI shell; they are intentionally separate from the native `pstouch_image_core` and are not parity-tested against Photoshop Touch. Layered PSD editing and the full original editor remain unimplemented.
+The Win32 shell now includes native Save As (PNG/JPEG/BMP/TIFF encoders), grayscale and sepia commands, a bounded 20-snapshot undo history, redo, and Ctrl+S/Ctrl+Z/Ctrl+Y shortcuts. These commands currently operate on a GDI+ bitmap owned by the UI shell; they are intentionally separate from the native `pstouch_image_core` and are not parity-tested against Photoshop Touch. This was the state at iteration 12; layered PSD import/export and native document-layer integration were implemented in later iterations. The full original editor is still not complete.
 
 
 ### Iteration 13 — mockup composition prototype
@@ -70,7 +70,7 @@ The Win32 shell now creates and scans a `fonts/` directory beside the executable
 
 ### Iteration 18 — shared native image operations in the Windows shell
 
-The Win32 executable now links against `pstouch_image_core`. Grayscale, sepia, 90-degree rotation, and horizontal/vertical flips convert the GDI+ canvas to the core RGBA image representation, run the core operation, and convert back only after a successful result. The UI retains its existing undo snapshots, so failed conversions do not commit partial edits. This is the first operational bridge between the GUI and the portable core; the native `Document`/layer model is still not the GUI source of truth, and the layer panel remains a visual prototype.
+The Win32 executable now links against `pstouch_image_core`. Grayscale, sepia, 90-degree rotation, and horizontal/vertical flips convert the GDI+ canvas to the core RGBA image representation, run the core operation, and convert back only after a successful result. The UI retains its existing undo snapshots, so failed conversions do not commit partial edits. This was the first operational bridge at iteration 18. Later iterations connected the native `Document` model to the GUI layer panel, document compositing, layer operations, `.ptdoc` projects, and layered PSD import/export.
 
 
 ### Iteration 19 — regression coverage for document composition and history
