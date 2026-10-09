@@ -25,6 +25,25 @@ int main(){pstouch::Document d(3,3);d.add_layer(pstouch::Layer("base",pstouch::I
  assert(composite.can_redo() && composite.redo());
  assert(composite.layers()[1].visible);
 
+ // Canvas rotation swaps dimensions and transforms every layer offset without clipping.
+ pstouch::Document rotated(3,2,"rotation");
+ pstouch::Image base_pixels(3,2,{0,0,0,255});
+ base_pixels.at(1,0)={10,20,30,255};
+ rotated.add_layer(pstouch::Layer("base",std::move(base_pixels)));
+ pstouch::Layer marker_layer("marker",pstouch::Image(1,1,{200,100,50,255}));
+ marker_layer.x=1; marker_layer.y=0; rotated.add_layer(std::move(marker_layer));
+ rotated.checkpoint("before rotation");
+ rotated.rotate_canvas(true);
+ assert(rotated.width()==2 && rotated.height()==3);
+ assert(rotated.layers()[1].x==1 && rotated.layers()[1].y==1);
+ auto rotated_composite=rotated.composite();
+ assert(rotated_composite.at(1,1).r==200 && rotated_composite.at(1,1).g==100);
+ rotated.checkpoint("rotated clockwise");
+ assert(rotated.undo() && rotated.width()==3 && rotated.height()==2);
+ assert(rotated.redo() && rotated.width()==2 && rotated.height()==3);
+ rotated.rotate_canvas(false);
+ assert(rotated.width()==3 && rotated.height()==2);
+ assert(rotated.layers()[1].x==1 && rotated.layers()[1].y==0);
  // Match the editor transaction order: mutate first, then record the resulting state.
  pstouch::Document transactions(2,2,"transactions");
  transactions.add_layer(pstouch::Layer("base",pstouch::Image(2,2,{1,2,3,255})));
