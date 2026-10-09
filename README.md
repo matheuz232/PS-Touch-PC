@@ -107,3 +107,8 @@ The Windows shell now exposes the 100 photo-grade presets and native image opera
 ### Iteration 22 — shadow/highlight recovery and channel color balance
 
 Added two more parameterized core adjustments. Shadow/highlight control applies a smooth luminance-weighted lift or reduction to dark and bright tones, while color balance applies independent bounded RGB gains. Both reject non-finite/out-of-range parameters and preserve alpha. The Win32 filter menu exposes conservative presets, and regression tests cover expected direction, alpha preservation, and invalid input.
+
+
+### Iteration 23 — selective vibrance
+
+Added a vibrance adjustment that increases or reduces saturation selectively: already-saturated colors are affected less than muted colors, while neutral gray remains neutral. The operation preserves alpha and validates finite parameters in the range [-1, 1]. The Windows **Filtros** menu exposes a conservative +55% action; regression tests cover muted-color enhancement, grayscale neutrality, desaturation, alpha preservation, and invalid values.
