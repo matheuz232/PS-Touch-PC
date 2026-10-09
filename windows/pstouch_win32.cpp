@@ -7,6 +7,7 @@
 #include <gdiplus.h>
 #include "pstouch/image.hpp"
 #include "pstouch/document.hpp"
+#include "pstouch/psd.hpp"
 #include <string>
 #include <memory>
 #include <algorithm>
@@ -94,12 +95,14 @@ int encoder_clsid(const WCHAR* mime, CLSID* clsid) {
  if(GetImageEncoders(count,size,info)!=Ok) return -1;
  for(UINT i=0;i<count;i++) if(wcscmp(info[i].MimeType,mime)==0){*clsid=info[i].Clsid;return (int)i;} return -1;
 }
+std::string wide_to_utf8(const std::wstring& value);
 void save_image() {
  if(!g_image){MessageBoxW(g_hwnd,L"Abra uma imagem antes de salvar.",L"PS Touch PC",MB_OK|MB_ICONINFORMATION);return;}
  wchar_t path[MAX_PATH]=L"imagem.png"; OPENFILENAMEW ofn{}; ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=g_hwnd;
- ofn.lpstrFilter=L"PNG (*.png)\0*.png\0JPEG (*.jpg)\0*.jpg\0Bitmap (*.bmp)\0*.bmp\0TIFF (*.tif)\0*.tif\0";ofn.lpstrFile=path;ofn.nMaxFile=MAX_PATH;ofn.Flags=OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST;ofn.lpstrDefExt=L"png";
+ ofn.lpstrFilter=L"PNG (*.png)\0*.png\0JPEG (*.jpg)\0*.jpg\0Bitmap (*.bmp)\0*.bmp\0TIFF (*.tif)\0*.tif\0Photoshop document (*.psd)\0*.psd\0";ofn.lpstrFile=path;ofn.nMaxFile=MAX_PATH;ofn.Flags=OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST;ofn.lpstrDefExt=L"png";
  if(!GetSaveFileNameW(&ofn))return; const wchar_t* mime=L"image/png"; const wchar_t* ext=wcsrchr(path,L'.');
  if(ext && (_wcsicmp(ext,L".jpg")==0||_wcsicmp(ext,L".jpeg")==0))mime=L"image/jpeg";else if(ext&&_wcsicmp(ext,L".bmp")==0)mime=L"image/bmp";else if(ext&&(_wcsicmp(ext,L".tif")==0||_wcsicmp(ext,L".tiff")==0))mime=L"image/tiff";
+ if(ext&&_wcsicmp(ext,L".psd")==0){try{const auto utf8=wide_to_utf8(path);if(g_document)pstouch::save_psd_layers(*g_document,utf8);else{auto core=to_core_image(*g_image);if(!core)throw std::runtime_error("image conversion failed");pstouch::save_psd_flattened(*core,utf8);}g_path=path;InvalidateRect(g_hwnd,nullptr,FALSE);return;}catch(const std::exception&){MessageBoxW(g_hwnd,L"Falha ao exportar o documento PSD. Verifique limites e modos de mesclagem das camadas.",L"PS Touch PC",MB_OK|MB_ICONERROR);return;}}
  CLSID clsid{}; if(encoder_clsid(mime,&clsid)<0||g_image->Save(path,&clsid,nullptr)!=Ok){MessageBoxW(g_hwnd,L"Falha ao salvar a imagem neste formato.",L"PS Touch PC",MB_OK|MB_ICONERROR);return;} g_path=path;InvalidateRect(g_hwnd,nullptr,FALSE);
 }
 void render_document() {
@@ -232,7 +235,35 @@ void save_project() {
   MessageBoxW(g_hwnd,L"Falha ao salvar o projeto .ptdoc.",L"PS Touch PC",MB_OK|MB_ICONERROR);
  }
 }
-void open_image() { wchar_t path[MAX_PATH]{}; OPENFILENAMEW ofn{}; ofn.lStructSize=sizeof(ofn); ofn.hwndOwner=g_hwnd; ofn.lpstrFilter=L"Images\0*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff\0All files\0*.*\0"; ofn.lpstrFile=path; ofn.nMaxFile=MAX_PATH; ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST; if(GetOpenFileNameW(&ofn)){ auto candidate=std::make_unique<Bitmap>(path); if(candidate->GetLastStatus()==Ok){if(initialize_document_from_bitmap(*candidate,"Image")){g_image=std::move(candidate);g_path=path;g_zoom=1.0f;g_undo.clear();g_redo.clear();}else MessageBoxW(g_hwnd,L"Falha ao converter a imagem para o documento editável.",L"PS Touch PC",MB_OK|MB_ICONERROR);} else MessageBoxW(g_hwnd,L"Não foi possível abrir esta imagem. Use PNG, JPEG, BMP ou TIFF nesta versão.",L"PS Touch PC",MB_ICONWARNING); InvalidateRect(g_hwnd,nullptr,TRUE); } }
+void open_image() {
+ wchar_t path[MAX_PATH]{}; OPENFILENAMEW ofn{}; ofn.lStructSize=sizeof(ofn); ofn.hwndOwner=g_hwnd;
+ ofn.lpstrFilter=L"Images and PSD\0*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.psd\0All files\0*.*\0";
+ ofn.lpstrFile=path; ofn.nMaxFile=MAX_PATH; ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST;
+ if(!GetOpenFileNameW(&ofn))return;
+ const wchar_t* ext=wcsrchr(path,L'.');
+ if(ext&&_wcsicmp(ext,L".psd")==0){
+  try {
+   auto loaded=std::make_unique<pstouch::Document>(pstouch::load_psd_layers(wide_to_utf8(path)));
+   auto composite=from_core_image(loaded->composite());if(!composite)throw std::runtime_error("PSD composite conversion failed");
+   loaded->checkpoint("Open PSD");g_document=std::move(loaded);g_image=std::move(composite);g_selected_layer=0;g_path=path;g_zoom=1.0f;g_undo.clear();g_redo.clear();g_mockup_design.reset();
+  } catch(const std::exception&) {
+   try {
+    auto flat=pstouch::load_psd_flattened(wide_to_utf8(path));auto bitmap=from_core_image(flat);
+    if(!bitmap||!initialize_document_from_bitmap(*bitmap,"PSD (flattened)"))throw std::runtime_error("PSD conversion failed");
+    g_image=std::move(bitmap);g_path=path;g_zoom=1.0f;g_undo.clear();g_redo.clear();
+   } catch(const std::exception&) {
+    MessageBoxW(g_hwnd,L"Não foi possível abrir este PSD. A importação em camadas exige canais raw; a alternativa achatada aceita PSD RGB de 8 bits com dados raw ou RLE.",L"PS Touch PC",MB_OK|MB_ICONERROR);
+   }
+  }
+  InvalidateRect(g_hwnd,nullptr,TRUE);return;
+ }
+ auto candidate=std::make_unique<Bitmap>(path);
+ if(candidate->GetLastStatus()==Ok){
+  if(initialize_document_from_bitmap(*candidate,"Image")){g_image=std::move(candidate);g_path=path;g_zoom=1.0f;g_undo.clear();g_redo.clear();}
+  else MessageBoxW(g_hwnd,L"Falha ao converter a imagem para o documento editável.",L"PS Touch PC",MB_OK|MB_ICONERROR);
+ } else MessageBoxW(g_hwnd,L"Não foi possível abrir esta imagem. Use PNG, JPEG, BMP, TIFF ou PSD.",L"PS Touch PC",MB_ICONWARNING);
+ InvalidateRect(g_hwnd,nullptr,TRUE);
+}
 void start_mockup() {
  if(!g_image){MessageBoxW(g_hwnd,L"Abra primeiro uma foto do produto ou uma imagem-base para o mockup.",L"PS Touch PC",MB_OK|MB_ICONINFORMATION);return;}
  wchar_t path[MAX_PATH]{}; OPENFILENAMEW ofn{}; ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=g_hwnd;ofn.lpstrFilter=L"Arte/design (PNG recomendado)\0*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff\0Todos os arquivos\0*.*\0";ofn.lpstrFile=path;ofn.nMaxFile=MAX_PATH;ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST;
