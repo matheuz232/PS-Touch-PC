@@ -222,9 +222,17 @@ void adjust_levels(Image& image,uint8_t blackPoint,uint8_t whitePoint,float gamm
 void auto_contrast(Image& image){
     if(image.pixels().empty())return;
     uint8_t minR=255,minG=255,minB=255,maxR=0,maxG=0,maxB=0;
-    for(const auto& p:image.pixels()){minR=std::min(minR,p.r);minG=std::min(minG,p.g);minB=std::min(minB,p.b);maxR=std::max(maxR,p.r);maxG=std::max(maxG,p.g);maxB=std::max(maxB,p.b);}
+    bool foundVisible=false;
+    for(const auto& p:image.pixels()){
+        if(p.a==0)continue;
+        foundVisible=true;
+        minR=std::min(minR,p.r);minG=std::min(minG,p.g);minB=std::min(minB,p.b);
+        maxR=std::max(maxR,p.r);maxG=std::max(maxG,p.g);maxB=std::max(maxB,p.b);
+    }
+    if(!foundVisible)return;
     const bool varyR=maxR>minR,varyG=maxG>minG,varyB=maxB>minB;
     for(auto& p:image.mutable_pixels()){
+        if(p.a==0)continue;
         if(varyR)p.r=static_cast<uint8_t>((static_cast<uint32_t>(p.r-minR)*255U)/(maxR-minR));
         if(varyG)p.g=static_cast<uint8_t>((static_cast<uint32_t>(p.g-minG)*255U)/(maxG-minG));
         if(varyB)p.b=static_cast<uint8_t>((static_cast<uint32_t>(p.b-minB)*255U)/(maxB-minB));
