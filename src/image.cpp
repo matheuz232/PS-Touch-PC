@@ -137,9 +137,37 @@ void sharpen(Image& image,float amount){
     for(size_t i=0;i<dst.size();++i){auto channel=[&](uint8_t a,uint8_t b){return clamp_byte(static_cast<float>(a)+(static_cast<float>(a)-b)*amount);};dst[i].r=channel(dst[i].r,base[i].r);dst[i].g=channel(dst[i].g,base[i].g);dst[i].b=channel(dst[i].b,base[i].b);}
 }
 void edge_detect(Image& image){
-    const uint32_t w=image.width(),h=image.height();const auto src=image.pixels();auto& dst=image.mutable_pixels();
-    auto lum=[&](int x,int y){x=std::clamp(x,0,static_cast<int>(w)-1);y=std::clamp(y,0,static_cast<int>(h)-1);const auto& p=src[static_cast<size_t>(y)*w+static_cast<uint32_t>(x)];return 0.2126f*p.r+0.7152f*p.g+0.0722f*p.b;};
-    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){const int xx=static_cast<int>(x),yy=static_cast<int>(y);const float gx=-lum(xx-1,yy-1)+lum(xx+1,yy-1)-2*lum(xx-1,yy)+2*lum(xx+1,yy)-lum(xx-1,yy+1)+lum(xx+1,yy+1);const float gy=-lum(xx-1,yy-1)-2*lum(xx,yy-1)-lum(xx+1,yy-1)+lum(xx-1,yy+1)+2*lum(xx,yy+1)+lum(xx+1,yy+1);const auto v=clamp_byte(std::sqrt(gx*gx+gy*gy));auto& p=dst[static_cast<size_t>(y)*w+x];p.r=p.g=p.b=v;}
+    const uint32_t w=image.width(),h=image.height();
+    const auto& src=image.pixels();
+    auto& dst=image.mutable_pixels();
+    // A three-row luminance ring buffer replaces a full-frame source copy.
+    // This materially reduces peak memory on large images and low-RAM PCs.
+    std::vector<float> previous(w),current(w),next(w);
+    const auto load_row=[&](uint32_t y,std::vector<float>& row){
+        const size_t start=static_cast<size_t>(y)*w;
+        for(uint32_t x=0;x<w;++x){
+            const auto& p=src[start+x];
+            row[x]=0.2126f*p.r+0.7152f*p.g+0.0722f*p.b;
+        }
+    };
+    load_row(0,previous);
+    load_row(0,current);
+    load_row(std::min<uint32_t>(1,h-1),next);
+    for(uint32_t y=0;y<h;++y){
+        for(uint32_t x=0;x<w;++x){
+            const uint32_t left=x==0?0:x-1,right=std::min<uint32_t>(x+1,w-1);
+            const float gx=-previous[left]+previous[right]-2.0f*current[left]+2.0f*current[right]-next[left]+next[right];
+            const float gy=-previous[left]-2.0f*previous[x]-previous[right]+next[left]+2.0f*next[x]+next[right];
+            const auto value=clamp_byte(std::sqrt(gx*gx+gy*gy));
+            auto& p=dst[static_cast<size_t>(y)*w+x];
+            p.r=p.g=p.b=value;
+        }
+        if(y+1<h){
+            previous.swap(current);
+            current.swap(next);
+            load_row(std::min<uint32_t>(y+2,h-1),next);
+        }
+    }
 }
 void threshold(Image& image,uint8_t cutoff){for(auto& p:image.mutable_pixels()){const auto y=clamp_byte(0.2126f*p.r+0.7152f*p.g+0.0722f*p.b);const uint8_t v=y>=cutoff?255:0;p.r=p.g=p.b=v;}}
 void adjust_gamma(Image& image,float gamma){
