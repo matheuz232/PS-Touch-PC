@@ -111,34 +111,34 @@ void gaussian_blur(Image& image,float sigma){
     for(auto& v:kernel)v/=sum;
     const uint32_t w=image.width(),h=image.height();std::vector<Pixel> temp(image.pixels().size());
     const auto& src=image.pixels();
-    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){float ch[4]={0,0,0,0};for(int k=-radius;k<=radius;++k){const auto xx=static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(x)+k,0,static_cast<int64_t>(w)-1));const auto& p=src[static_cast<size_t>(y)*w+xx];const float weight=kernel[static_cast<size_t>(k+radius)];ch[0]+=p.r*weight;ch[1]+=p.g*weight;ch[2]+=p.b*weight;ch[3]+=p.a*weight;}temp[static_cast<size_t>(y)*w+x]={byte(ch[0]),byte(ch[1]),byte(ch[2]),byte(ch[3])};}
+    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){float ch[4]={0,0,0,0};for(int k=-radius;k<=radius;++k){const auto xx=static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(x)+k,0,static_cast<int64_t>(w)-1));const auto& p=src[static_cast<size_t>(y)*w+xx];const float weight=kernel[static_cast<size_t>(k+radius)];ch[0]+=p.r*weight;ch[1]+=p.g*weight;ch[2]+=p.b*weight;ch[3]+=p.a*weight;}temp[static_cast<size_t>(y)*w+x]={clamp_byte(ch[0]),clamp_byte(ch[1]),clamp_byte(ch[2]),clamp_byte(ch[3])};}
     auto& dst=image.mutable_pixels();
-    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){float ch[4]={0,0,0,0};for(int k=-radius;k<=radius;++k){const auto yy=static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(y)+k,0,static_cast<int64_t>(h)-1));const auto& p=temp[static_cast<size_t>(yy)*w+x];const float weight=kernel[static_cast<size_t>(k+radius)];ch[0]+=p.r*weight;ch[1]+=p.g*weight;ch[2]+=p.b*weight;ch[3]+=p.a*weight;}dst[static_cast<size_t>(y)*w+x]={byte(ch[0]),byte(ch[1]),byte(ch[2]),byte(ch[3])};}
+    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){float ch[4]={0,0,0,0};for(int k=-radius;k<=radius;++k){const auto yy=static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(y)+k,0,static_cast<int64_t>(h)-1));const auto& p=temp[static_cast<size_t>(yy)*w+x];const float weight=kernel[static_cast<size_t>(k+radius)];ch[0]+=p.r*weight;ch[1]+=p.g*weight;ch[2]+=p.b*weight;ch[3]+=p.a*weight;}dst[static_cast<size_t>(y)*w+x]={clamp_byte(ch[0]),clamp_byte(ch[1]),clamp_byte(ch[2]),clamp_byte(ch[3])};}
 }
 void sharpen(Image& image,float amount){
     if(!std::isfinite(amount)||amount<0.0f||amount>5.0f)throw std::invalid_argument("sharpen amount must be in [0, 5]");
     if(amount==0.0f)return;Image blurred=image;gaussian_blur(blurred,1.0f);auto& dst=image.mutable_pixels();const auto& base=blurred.pixels();
-    for(size_t i=0;i<dst.size();++i){auto channel=[&](uint8_t a,uint8_t b){return byte(static_cast<float>(a)+(static_cast<float>(a)-b)*amount);};dst[i].r=channel(dst[i].r,base[i].r);dst[i].g=channel(dst[i].g,base[i].g);dst[i].b=channel(dst[i].b,base[i].b);}
+    for(size_t i=0;i<dst.size();++i){auto channel=[&](uint8_t a,uint8_t b){return clamp_byte(static_cast<float>(a)+(static_cast<float>(a)-b)*amount);};dst[i].r=channel(dst[i].r,base[i].r);dst[i].g=channel(dst[i].g,base[i].g);dst[i].b=channel(dst[i].b,base[i].b);}
 }
 void edge_detect(Image& image){
     const uint32_t w=image.width(),h=image.height();const auto src=image.pixels();auto& dst=image.mutable_pixels();
     auto lum=[&](int x,int y){x=std::clamp(x,0,static_cast<int>(w)-1);y=std::clamp(y,0,static_cast<int>(h)-1);const auto& p=src[static_cast<size_t>(y)*w+static_cast<uint32_t>(x)];return 0.2126f*p.r+0.7152f*p.g+0.0722f*p.b;};
-    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){const int xx=static_cast<int>(x),yy=static_cast<int>(y);const float gx=-lum(xx-1,yy-1)+lum(xx+1,yy-1)-2*lum(xx-1,yy)+2*lum(xx+1,yy)-lum(xx-1,yy+1)+lum(xx+1,yy+1);const float gy=-lum(xx-1,yy-1)-2*lum(xx,yy-1)-lum(xx+1,yy-1)+lum(xx-1,yy+1)+2*lum(xx,yy+1)+lum(xx+1,yy+1);const auto v=byte(std::sqrt(gx*gx+gy*gy));auto& p=dst[static_cast<size_t>(y)*w+x];p.r=p.g=p.b=v;}
+    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){const int xx=static_cast<int>(x),yy=static_cast<int>(y);const float gx=-lum(xx-1,yy-1)+lum(xx+1,yy-1)-2*lum(xx-1,yy)+2*lum(xx+1,yy)-lum(xx-1,yy+1)+lum(xx+1,yy+1);const float gy=-lum(xx-1,yy-1)-2*lum(xx,yy-1)-lum(xx+1,yy-1)+lum(xx-1,yy+1)+2*lum(xx,yy+1)+lum(xx+1,yy+1);const auto v=clamp_byte(std::sqrt(gx*gx+gy*gy));auto& p=dst[static_cast<size_t>(y)*w+x];p.r=p.g=p.b=v;}
 }
-void threshold(Image& image,uint8_t cutoff){for(auto& p:image.mutable_pixels()){const auto y=byte(0.2126f*p.r+0.7152f*p.g+0.0722f*p.b);const uint8_t v=y>=cutoff?255:0;p.r=p.g=p.b=v;}}
+void threshold(Image& image,uint8_t cutoff){for(auto& p:image.mutable_pixels()){const auto y=clamp_byte(0.2126f*p.r+0.7152f*p.g+0.0722f*p.b);const uint8_t v=y>=cutoff?255:0;p.r=p.g=p.b=v;}}
 void adjust_gamma(Image& image,float gamma){
     if(!std::isfinite(gamma)||gamma<=0.0f||gamma>10.0f)throw std::invalid_argument("gamma must be in (0, 10]");
-    std::array<uint8_t,256> lut{};for(size_t i=0;i<lut.size();++i)lut[i]=byte(255.0f*std::pow(static_cast<float>(i)/255.0f,1.0f/gamma));
+    std::array<uint8_t,256> lut{};for(size_t i=0;i<lut.size();++i)lut[i]=clamp_byte(255.0f*std::pow(static_cast<float>(i)/255.0f,1.0f/gamma));
     for(auto& p:image.mutable_pixels()){p.r=lut[p.r];p.g=lut[p.g];p.b=lut[p.b];}
 }
 void adjust_temperature(Image& image,float amount){
     if(!std::isfinite(amount)||amount< -1.0f||amount>1.0f)throw std::invalid_argument("temperature must be in [-1, 1]");
-    const float shift=amount*48.0f;for(auto& p:image.mutable_pixels()){p.r=byte(p.r+shift);p.b=byte(p.b-shift);}
+    const float shift=amount*48.0f;for(auto& p:image.mutable_pixels()){p.r=clamp_byte(p.r+shift);p.b=clamp_byte(p.b-shift);}
 }
 void vignette(Image& image,float amount){
     if(!std::isfinite(amount)||amount<0.0f||amount>1.0f)throw std::invalid_argument("vignette amount must be in [0, 1]");
     if(amount==0.0f)return;const float cx=(static_cast<float>(image.width())-1.0f)*0.5f,cy=(static_cast<float>(image.height())-1.0f)*0.5f;const float maxDist=std::sqrt(cx*cx+cy*cy);if(maxDist<=0.0f)return;
-    for(uint32_t y=0;y<image.height();++y)for(uint32_t x=0;x<image.width();++x){const float dx=(static_cast<float>(x)-cx)/maxDist,dy=(static_cast<float>(y)-cy)/maxDist;const float factor=1.0f-amount*std::clamp((dx*dx+dy*dy)*1.35f,0.0f,1.0f);auto& p=image.mutable_pixels()[static_cast<size_t>(y)*image.width()+x];p.r=byte(p.r*factor);p.g=byte(p.g*factor);p.b=byte(p.b*factor);}
+    for(uint32_t y=0;y<image.height();++y)for(uint32_t x=0;x<image.width();++x){const float dx=(static_cast<float>(x)-cx)/maxDist,dy=(static_cast<float>(y)-cy)/maxDist;const float factor=1.0f-amount*std::clamp((dx*dx+dy*dy)*1.35f,0.0f,1.0f);auto& p=image.mutable_pixels()[static_cast<size_t>(y)*image.width()+x];p.r=clamp_byte(p.r*factor);p.g=clamp_byte(p.g*factor);p.b=clamp_byte(p.b*factor);}
 }
 void pixelate(Image& image,uint32_t blockSize){
     if(blockSize==0||blockSize>4096)throw std::invalid_argument("pixel block size must be in [1, 4096]");if(blockSize==1)return;
