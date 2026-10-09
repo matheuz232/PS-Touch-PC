@@ -16,6 +16,7 @@ int main(){
  pstouch::Image blur(3,1,{0,0,0,255});blur.at(1,0)={255,255,255,255};pstouch::gaussian_blur(blur,1.0f);assert(blur.at(1,0).r<255&&blur.at(1,0).r>blur.at(0,0).r);
  pstouch::Image sharp(3,1,{100,100,100,255});sharp.at(1,0)={150,150,150,255};pstouch::sharpen(sharp,1.0f);assert(sharp.at(1,0).r>=150);
  pstouch::Image edges(3,3,{0,0,0,255});for(uint32_t y=0;y<3;++y)edges.at(2,y)={255,255,255,255};pstouch::edge_detect(edges);assert(edges.at(1,1).r>0&&edges.at(1,1).r==edges.at(1,1).g);
+ pstouch::Image singleEdgePixel(1,1,{120,80,40,37});pstouch::edge_detect(singleEdgePixel);assert(singleEdgePixel.at(0,0).r==0&&singleEdgePixel.at(0,0).g==0&&singleEdgePixel.at(0,0).b==0&&singleEdgePixel.at(0,0).a==37);
  pstouch::Image binary(2,1,{30,30,30,255});binary.at(1,0)={200,200,200,64};pstouch::threshold(binary,128);assert(binary.at(0,0).r==0&&binary.at(1,0).r==255&&binary.at(1,0).a==64);
  pstouch::Image gamma(1,1,{64,128,200,80});pstouch::adjust_gamma(gamma,2.0f);assert(gamma.at(0,0).r>64&&gamma.at(0,0).a==80);
  pstouch::Image temp(1,1,{100,100,100,77});pstouch::adjust_temperature(temp,1.0f);assert(temp.at(0,0).r>100&&temp.at(0,0).b<100&&temp.at(0,0).a==77);
