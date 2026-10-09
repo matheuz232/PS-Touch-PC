@@ -42,3 +42,54 @@ jobs:
         run: cmake --build build --config Release --parallel 1
       - name: Run core tests
         run: ctest --test-dir build -C Release --output-on-failure
+      - name: Stage portable Windows preview
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $stage = Join-Path $env:RUNNER_TEMP "PS-Touch-PC-windows-x64"
+          $runtime = Join-Path $stage "runtime"
+          $licenses = Join-Path $stage "licenses"
+          New-Item -ItemType Directory -Force -Path $runtime, $licenses | Out-Null
+
+          $exe = Join-Path $PWD "build/Release/PS-Touch.exe"
+          if (!(Test-Path $exe)) { throw "Expected Windows application was not built: $exe" }
+          Copy-Item $exe $stage
+
+          $vcpkgBin = Join-Path $env:VCPKG_INSTALLATION_ROOT "installed/x64-windows/bin"
+          $runtimeDlls = Get-ChildItem $vcpkgBin -File -Filter "*.dll" |
+            Where-Object { $_.Name -match '^(libpng.*|jpeg.*|turbojpeg.*|zlib.*)\.dll
+ }
+          if (!$runtimeDlls -or $runtimeDlls.Count -eq 0) {
+            throw "Could not locate the PNG/JPEG/Zlib runtime DLLs in vcpkg."
+          }
+          foreach ($dll in $runtimeDlls) { Copy-Item $dll.FullName $runtime }
+
+          Copy-Item "README.md" $stage
+          Copy-Item "portable/README.txt" (Join-Path $stage "PORTABLE-README.txt")
+          @"
+          PS Touch PC — Windows x64 preview build
+          ========================================
+          This is a CI preview artifact, not a 1.0 release.
+          Extract the entire folder and run PS-Touch.exe. Keep the runtime folder beside the executable.
+          This package has not yet been validated on a clean Windows 10/11 machine.
+          See README.md and PORTABLE-README.txt for current limitations.
+          "@ | Set-Content -Encoding UTF8 (Join-Path $stage "START-HERE.txt")
+
+          $share = Join-Path $env:VCPKG_INSTALLATION_ROOT "installed/x64-windows/share"
+          foreach ($package in @("libpng", "libjpeg-turbo", "zlib")) {
+            $copyright = Join-Path $share "$package/copyright"
+            if (Test-Path $copyright) {
+              Copy-Item $copyright (Join-Path $licenses "$package-copyright.txt")
+            }
+          }
+          if (!(Get-ChildItem $licenses -File -ErrorAction SilentlyContinue)) {
+            throw "Dependency license files were not staged."
+          }
+          Compress-Archive -Path (Join-Path $stage "*") -DestinationPath (Join-Path $env:RUNNER_TEMP "PS-Touch-PC-windows-x64-preview.zip") -Force
+      - name: Upload portable Windows preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS-Touch-PC-windows-x64-preview
+          path: ${{ runner.temp }}/PS-Touch-PC-windows-x64-preview.zip
+          if-no-files-found: error
+          retention-days: 14
