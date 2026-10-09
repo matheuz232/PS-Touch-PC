@@ -93,7 +93,7 @@ Document load_psd_layers(const std::string& path){
  const uint32_t count=static_cast<uint32_t>(signedCount<0?-static_cast<int32_t>(signedCount):signedCount);
  if(count==0||count>512)throw std::runtime_error("layered PSD import requires 1..512 layers");
  struct Channel { int16_t id{}; uint32_t length{}; };
- struct Record { int32_t top{},left{},bottom{},right{};uint8_t opacity{255};bool visible{true};BlendMode blend{BlendMode::Normal};std::string name;std::vector<Channel> channels;Image image; };
+ struct Record { int32_t top{},left{},bottom{},right{};uint8_t opacity{255};bool visible{true};BlendMode blend{BlendMode::Normal};std::string name;std::vector<Channel> channels;Image image{1,1,{0,0,0,0}}; };
  std::vector<Record> records;records.reserve(count);
  auto read_s32=[&](){return static_cast<int32_t>(read_be32(i));};
  auto read_fourcc=[&](){char b[4]{};i.read(b,4);if(!i)throw std::runtime_error("truncated PSD layer record");return std::string(b,4);};
