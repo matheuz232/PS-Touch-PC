@@ -64,9 +64,9 @@ std::unique_ptr<pstouch::Image> to_core_image(Bitmap& bitmap) {
  Rect rect(0,0,(INT)width,(INT)height); BitmapData data{};
  if(bitmap.LockBits(&rect,ImageLockModeRead,PixelFormat32bppARGB,&data)!=Ok) return {};
  bool ok=true;
- for(INT y=0;y<data.Height;y++) {
+ for(UINT y=0;y<data.Height;y++) {
   const auto* row=reinterpret_cast<const BYTE*>(data.Scan0)+static_cast<ptrdiff_t>(y)*data.Stride;
-  for(INT x=0;x<data.Width;x++) {
+  for(UINT x=0;x<data.Width;x++) {
    const BYTE* p=row+static_cast<ptrdiff_t>(x)*4;
    image->at((uint32_t)x,(uint32_t)y)=pstouch::Pixel{p[2],p[1],p[0],p[3]};
   }
@@ -79,9 +79,9 @@ std::unique_ptr<Bitmap> from_core_image(const pstouch::Image& image) {
  if(bitmap->GetLastStatus()!=Ok) return {};
  Rect rect(0,0,(INT)image.width(),(INT)image.height()); BitmapData data{};
  if(bitmap->LockBits(&rect,ImageLockModeWrite,PixelFormat32bppARGB,&data)!=Ok) return {};
- for(INT y=0;y<data.Height;y++) {
+ for(UINT y=0;y<data.Height;y++) {
   auto* row=reinterpret_cast<BYTE*>(data.Scan0)+static_cast<ptrdiff_t>(y)*data.Stride;
-  for(INT x=0;x<data.Width;x++) {
+  for(UINT x=0;x<data.Width;x++) {
    const auto& pixel=image.at((uint32_t)x,(uint32_t)y);
    BYTE* p=row+static_cast<ptrdiff_t>(x)*4;
    p[0]=pixel.b; p[1]=pixel.g; p[2]=pixel.r; p[3]=pixel.a;
