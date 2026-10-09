@@ -47,9 +47,8 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $stage = Join-Path $env:RUNNER_TEMP "PS-Touch-PC-windows-x64"
-          $runtime = Join-Path $stage "runtime"
           $licenses = Join-Path $stage "licenses"
-          New-Item -ItemType Directory -Force -Path $runtime, $licenses | Out-Null
+          New-Item -ItemType Directory -Force -Path $stage, $licenses | Out-Null
 
           $exe = Join-Path $PWD "build/Release/PS-Touch.exe"
           if (!(Test-Path $exe)) { throw "Expected Windows application was not built: $exe" }
@@ -62,7 +61,9 @@ jobs:
           if (!$runtimeDlls -or $runtimeDlls.Count -eq 0) {
             throw "Could not locate the PNG/JPEG/Zlib runtime DLLs in vcpkg."
           }
-          foreach ($dll in $runtimeDlls) { Copy-Item $dll.FullName $runtime }
+          # Windows does not search an arbitrary runtime subfolder for DLLs.
+          # Place required runtime DLLs beside the EXE so direct launch works.
+          foreach ($dll in $runtimeDlls) { Copy-Item $dll.FullName $stage }
 
           Copy-Item "README.md" $stage
           Copy-Item "portable/README.txt" (Join-Path $stage "PORTABLE-README.txt")
@@ -70,7 +71,7 @@ jobs:
           PS Touch PC — Windows x64 preview build
           ========================================
           This is a CI preview artifact, not a 1.0 release.
-          Extract the entire folder and run PS-Touch.exe. Keep the runtime folder beside the executable.
+          Extract the entire folder and run PS-Touch.exe. Keep the included runtime DLLs beside the executable.
           This package has not yet been validated on a clean Windows 10/11 machine.
           See README.md and PORTABLE-README.txt for current limitations.
           "@ | Set-Content -Encoding UTF8 (Join-Path $stage "START-HERE.txt")
