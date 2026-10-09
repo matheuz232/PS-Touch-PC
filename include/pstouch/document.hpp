@@ -32,6 +32,8 @@ public:
     void set_layer_opacity(size_t index, uint8_t opacity);
     size_t duplicate_layer(size_t index);
     Image composite() const;
+    // Rotate the complete canvas and all layer pixels/offsets without clipping.
+    void rotate_canvas(bool clockwise);
     void save(const std::string& path) const;
     static Document load(const std::string& path);
     void checkpoint(std::string label);
