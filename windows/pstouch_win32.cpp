@@ -132,6 +132,7 @@ bool initialize_document_from_bitmap(Bitmap& bitmap,const std::string& name) {
  auto image=to_core_image(bitmap); if(!image) return false;
  auto doc=std::make_unique<pstouch::Document>(image->width(),image->height(),name);
  doc->add_layer(pstouch::Layer("Background",std::move(*image)));
+ doc->checkpoint("Open image");
  g_document=std::move(doc); g_selected_layer=0; return true;
 }
 bool add_transparent_layer(const std::string& name) {
