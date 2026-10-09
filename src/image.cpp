@@ -134,11 +134,10 @@ void gaussian_blur(Image& image,float sigma){
     for(int i=-radius;i<=radius;++i){const float v=std::exp(-static_cast<float>(i*i)/(2.0f*sigma*sigma));kernel[static_cast<size_t>(i+radius)]=v;sum+=v;}
     for(auto& v:kernel)v/=sum;
     const uint32_t w=image.width(),h=image.height();
-    // Store the horizontal pass as RGBA floats so premultiplied colors remain
-    // precise. Blurring straight RGB independently creates colored fringes
-    // when transparent pixels contain unrelated hidden RGB values.
-    struct BlurPixel { float r,g,b,a; };
-    std::vector<BlurPixel> temp(image.pixels().size());
+    // Keep the temporary at four bytes per pixel for low-memory machines.
+    // RGB is stored premultiplied by alpha during both blur passes so hidden
+    // colors in transparent pixels cannot bleed into visible edges.
+    std::vector<Pixel> temp(image.pixels().size());
     const auto& src=image.pixels();
     for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){
         float ch[4]={0,0,0,0};
@@ -148,7 +147,7 @@ void gaussian_blur(Image& image,float sigma){
             const float weight=kernel[static_cast<size_t>(k+radius)],alpha=p.a/255.0f;
             ch[0]+=p.r*alpha*weight;ch[1]+=p.g*alpha*weight;ch[2]+=p.b*alpha*weight;ch[3]+=p.a*weight;
         }
-        temp[static_cast<size_t>(y)*w+x]={ch[0],ch[1],ch[2],ch[3]};
+        temp[static_cast<size_t>(y)*w+x]={clamp_byte(ch[0]),clamp_byte(ch[1]),clamp_byte(ch[2]),clamp_byte(ch[3])};
     }
     auto& dst=image.mutable_pixels();
     for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){
