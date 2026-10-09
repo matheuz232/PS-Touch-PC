@@ -146,4 +146,45 @@ void pixelate(Image& image,uint32_t blockSize){
     for(uint32_t by=0;by<h;by+=blockSize)for(uint32_t bx=0;bx<w;bx+=blockSize){const uint32_t ex=std::min(w,bx+blockSize),ey=std::min(h,by+blockSize);uint64_t r=0,g=0,b=0,a=0,count=0;for(uint32_t y=by;y<ey;++y)for(uint32_t x=bx;x<ex;++x){const auto& p=px[static_cast<size_t>(y)*w+x];r+=p.r;g+=p.g;b+=p.b;a+=p.a;++count;}const Pixel avg{static_cast<uint8_t>(r/count),static_cast<uint8_t>(g/count),static_cast<uint8_t>(b/count),static_cast<uint8_t>(a/count)};for(uint32_t y=by;y<ey;++y)for(uint32_t x=bx;x<ex;++x)px[static_cast<size_t>(y)*w+x]=avg;}
 }
 
+
+void adjust_exposure(Image& image,float stops){
+    if(!std::isfinite(stops)||stops< -8.0f||stops>8.0f)throw std::invalid_argument("exposure stops must be in [-8, 8]");
+    const float factor=std::exp2(stops);
+    for(auto& p:image.mutable_pixels()){p.r=clamp_byte(p.r*factor);p.g=clamp_byte(p.g*factor);p.b=clamp_byte(p.b*factor);}
+}
+void adjust_hue(Image& image,float degrees){
+    if(!std::isfinite(degrees)||degrees< -180.0f||degrees>180.0f)throw std::invalid_argument("hue rotation must be in [-180, 180]");
+    if(degrees==0.0f)return;
+    const float shift=degrees/60.0f;
+    for(auto& p:image.mutable_pixels()){
+        const float r=p.r/255.0f,g=p.g/255.0f,b=p.b/255.0f;
+        const float hi=std::max({r,g,b}),lo=std::min({r,g,b}),delta=hi-lo;
+        float h=0.0f,s=hi==0.0f?0.0f:delta/hi;
+        if(delta>0.0f){if(hi==r)h=std::fmod((g-b)/delta,6.0f);else if(hi==g)h=(b-r)/delta+2.0f;else h=(r-g)/delta+4.0f;h+=shift;h=std::fmod(h,6.0f);if(h<0.0f)h+=6.0f;}
+        const float chroma=hi*s,x=chroma*(1.0f-std::fabs(std::fmod(h,2.0f)-1.0f)),m=hi-chroma;
+        float nr=0.0f,ng=0.0f,nb=0.0f;
+        if(h<1.0f){nr=chroma;ng=x;}else if(h<2.0f){nr=x;ng=chroma;}else if(h<3.0f){ng=chroma;nb=x;}else if(h<4.0f){ng=x;nb=chroma;}else if(h<5.0f){nr=x;nb=chroma;}else{nr=chroma;nb=x;}
+        p.r=clamp_byte((nr+m)*255.0f);p.g=clamp_byte((ng+m)*255.0f);p.b=clamp_byte((nb+m)*255.0f);
+    }
+}
+void adjust_levels(Image& image,uint8_t blackPoint,uint8_t whitePoint,float gamma){
+    if(blackPoint>=whitePoint)throw std::invalid_argument("levels black point must be below white point");
+    if(!std::isfinite(gamma)||gamma<=0.0f||gamma>10.0f)throw std::invalid_argument("levels gamma must be in (0, 10]");
+    std::array<uint8_t,256> lut{};
+    const float range=static_cast<float>(whitePoint-blackPoint);
+    for(size_t i=0;i<lut.size();++i){const float normalized=std::clamp((static_cast<float>(i)-blackPoint)/range,0.0f,1.0f);lut[i]=clamp_byte(std::pow(normalized,1.0f/gamma)*255.0f);}
+    for(auto& p:image.mutable_pixels()){p.r=lut[p.r];p.g=lut[p.g];p.b=lut[p.b];}
+}
+void auto_contrast(Image& image){
+    if(image.pixels().empty())return;
+    uint8_t minR=255,minG=255,minB=255,maxR=0,maxG=0,maxB=0;
+    for(const auto& p:image.pixels()){minR=std::min(minR,p.r);minG=std::min(minG,p.g);minB=std::min(minB,p.b);maxR=std::max(maxR,p.r);maxG=std::max(maxG,p.g);maxB=std::max(maxB,p.b);}
+    const bool varyR=maxR>minR,varyG=maxG>minG,varyB=maxB>minB;
+    for(auto& p:image.mutable_pixels()){
+        if(varyR)p.r=static_cast<uint8_t>((static_cast<uint32_t>(p.r-minR)*255U)/(maxR-minR));
+        if(varyG)p.g=static_cast<uint8_t>((static_cast<uint32_t>(p.g-minG)*255U)/(maxG-minG));
+        if(varyB)p.b=static_cast<uint8_t>((static_cast<uint32_t>(p.b-minB)*255U)/(maxB-minB));
+    }
+}
+
 }
