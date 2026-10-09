@@ -39,6 +39,6 @@ jobs:
         shell: pwsh
         run: cmake -S . -B build -A x64 "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows
       - name: Build core, tests, and Win32 application
-        run: cmake --build build --config Release --parallel 2
+        run: cmake --build build --config Release --parallel 1
       - name: Run core tests
         run: ctest --test-dir build -C Release --output-on-failure
