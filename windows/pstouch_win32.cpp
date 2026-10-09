@@ -17,7 +17,7 @@
 using namespace Gdiplus;
 namespace {
 constexpr COLORREF BG=RGB(43,43,43), PANEL=RGB(52,52,52), PANEL2=RGB(37,37,37), ACCENT=RGB(73,139,207), TEXT=RGB(226,226,226), MUTED=RGB(165,165,165);
-HWND g_hwnd{}; ULONG_PTR g_gdiplus{}; std::unique_ptr<Bitmap> g_image; std::vector<std::wstring> g_loaded_font_paths; std::wstring g_path=L"Nenhuma imagem aberta"; float g_zoom=1.0f; bool g_showLayers=true, g_showTools=true; std::vector<std::unique_ptr<Bitmap>> g_undo, g_redo; bool g_text_mode=false; bool g_text_capturing=false; std::wstring g_text_input; int g_text_image_x=0,g_text_image_y=0,g_text_screen_x=0,g_text_screen_y=0; LOGFONTW g_text_logfont=[](){ LOGFONTW lf{}; lf.lfHeight=-32; lf.lfWeight=FW_NORMAL; wcscpy_s(lf.lfFaceName,LF_FACESIZE,L"Arial"); return lf; }(); COLORREF g_text_color=RGB(255,255,255); std::unique_ptr<Bitmap> g_mockup_design; float g_mockup_scale=0.55f; int g_mockup_dx=0,g_mockup_dy=0;
+HWND g_hwnd{}; ULONG_PTR g_gdiplus{}; std::unique_ptr<Bitmap> g_image; std::vector<std::wstring> g_loaded_font_paths; PrivateFontCollection g_private_fonts; std::wstring g_path=L"Nenhuma imagem aberta"; float g_zoom=1.0f; bool g_showLayers=true, g_showTools=true; std::vector<std::unique_ptr<Bitmap>> g_undo, g_redo; bool g_text_mode=false; bool g_text_capturing=false; std::wstring g_text_input; int g_text_image_x=0,g_text_image_y=0,g_text_screen_x=0,g_text_screen_y=0; LOGFONTW g_text_logfont=[](){ LOGFONTW lf{}; lf.lfHeight=-32; lf.lfWeight=FW_NORMAL; wcscpy_s(lf.lfFaceName,LF_FACESIZE,L"Arial"); return lf; }(); COLORREF g_text_color=RGB(255,255,255); std::unique_ptr<Bitmap> g_mockup_design; float g_mockup_scale=0.55f; int g_mockup_dx=0,g_mockup_dy=0;
 std::filesystem::path executable_directory() {
  wchar_t buffer[32768]{};
  constexpr DWORD buffer_count=(DWORD)(sizeof(buffer)/sizeof(buffer[0]));
@@ -35,7 +35,8 @@ void load_custom_fonts() {
   const auto extension=it->path().extension().wstring();
   if(_wcsicmp(extension.c_str(),L".ttf")!=0 && _wcsicmp(extension.c_str(),L".otf")!=0 && _wcsicmp(extension.c_str(),L".ttc")!=0) continue;
   const auto path=it->path().wstring();
-  if(AddFontResourceExW(path.c_str(),FR_PRIVATE,nullptr)!=0) g_loaded_font_paths.push_back(path);
+  Status private_status=g_private_fonts.AddFontFile(path.c_str());
+  if(AddFontResourceExW(path.c_str(),FR_PRIVATE,nullptr)!=0 || private_status==Ok) g_loaded_font_paths.push_back(path);
  }
 }
 void unload_custom_fonts() {
@@ -94,7 +95,8 @@ bool choose_text_style() {
 }
 void commit_text() {
  if(!g_image || g_text_input.empty()) { g_text_capturing=false; g_text_input.clear(); InvalidateRect(g_hwnd,nullptr,FALSE); return; }
- FontFamily family(g_text_logfont.lfFaceName);
+ FontFamily family(g_text_logfont.lfFaceName,&g_private_fonts);
+ if(family.GetLastStatus()!=Ok) family=FontFamily(g_text_logfont.lfFaceName);
  if(family.GetLastStatus()!=Ok) { MessageBoxW(g_hwnd,L"A família selecionada não pôde ser carregada. Escolha outra fonte.",L"PS Touch PC",MB_OK|MB_ICONWARNING); g_text_capturing=false; g_text_input.clear(); InvalidateRect(g_hwnd,nullptr,FALSE); return; }
  INT style=FontStyleRegular;
  if(g_text_logfont.lfWeight>=FW_BOLD) style|=FontStyleBold;
