@@ -37,5 +37,11 @@ int main(){
 
  pstouch::Image vibrant(2,1,{128,128,128,44});vibrant.at(1,0)={180,120,80,211};auto beforeV=vibrant;pstouch::adjust_vibrance(vibrant,1.0f);assert(vibrant.at(0,0).r==128&&vibrant.at(0,0).g==128&&vibrant.at(0,0).b==128);assert(vibrant.at(1,0).r>beforeV.at(1,0).r&&vibrant.at(1,0).b<beforeV.at(1,0).b);assert(vibrant.at(0,0).a==44&&vibrant.at(1,0).a==211);pstouch::adjust_vibrance(vibrant,-1.0f);assert(std::abs((int)vibrant.at(1,0).r-(int)vibrant.at(1,0).g)<std::abs((int)beforeV.at(1,0).r-(int)beforeV.at(1,0).g));bad=false;try{pstouch::adjust_vibrance(vibrant,1.1f);}catch(const std::invalid_argument&){bad=true;}assert(bad);
  pstouch::Image equalized(3,1,{30,20,10,31});equalized.at(1,0)={60,40,20,127};equalized.at(2,0)={90,60,30,255};auto eqBefore=equalized;pstouch::equalize_luminance(equalized);assert(equalized.at(0,0).r<equalized.at(1,0).r&&equalized.at(1,0).r<equalized.at(2,0).r);assert(equalized.at(0,0).a==31&&equalized.at(1,0).a==127&&equalized.at(2,0).a==255);pstouch::Image constant(2,1,{90,90,90,255});pstouch::equalize_luminance(constant);assert(constant.at(0,0).r==90&&constant.at(1,0).r==90);
+ // Fully transparent RGB values must not skew visible-image histogram statistics.
+ pstouch::Image visibleOnly(2,1,{30,30,30,255});visibleOnly.at(1,0)={90,90,90,255};
+ pstouch::Image withHiddenRgb(3,1,{30,30,30,255});withHiddenRgb.at(1,0)={90,90,90,255};withHiddenRgb.at(2,0)={255,255,255,0};
+ pstouch::equalize_luminance(visibleOnly);pstouch::equalize_luminance(withHiddenRgb);
+ assert(visibleOnly.at(0,0).r==withHiddenRgb.at(0,0).r&&visibleOnly.at(1,0).r==withHiddenRgb.at(1,0).r);
+ assert(withHiddenRgb.at(2,0).r==255&&withHiddenRgb.at(2,0).a==0);
  std::cout<<"PASS: transforms, color filters, 100% core ops, blur, sharpen, edges, gamma, temperature, vignette and pixelation\\n";
 }
