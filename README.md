@@ -71,3 +71,8 @@ The Win32 shell now creates and scans a `fonts/` directory beside the executable
 ### Iteration 18 — shared native image operations in the Windows shell
 
 The Win32 executable now links against `pstouch_image_core`. Grayscale, sepia, 90-degree rotation, and horizontal/vertical flips convert the GDI+ canvas to the core RGBA image representation, run the core operation, and convert back only after a successful result. The UI retains its existing undo snapshots, so failed conversions do not commit partial edits. This is the first operational bridge between the GUI and the portable core; the native `Document`/layer model is still not the GUI source of truth, and the layer panel remains a visual prototype.
+
+
+### Iteration 19 — regression coverage for document composition and history
+
+Expanded the native document-operation test to assert that compositing honors layer offsets, top-layer ordering and visibility, and that checkpoint-based undo/redo restores layer state in both directions. This protects the core behavior needed before the Win32 layer panel is connected to `Document`; it does not claim that the UI layer panel is integrated yet.
