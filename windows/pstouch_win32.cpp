@@ -142,29 +142,29 @@ bool initialize_document_from_bitmap(Bitmap& bitmap,const std::string& name) {
 bool add_transparent_layer(const std::string& name) {
  if(!g_document) return false;
  try {
-  g_selected_layer=g_document->add_layer(pstouch::Layer(name,pstouch::Image(g_document->width(),g_document->height(),{0,0,0,0})));
   g_document->checkpoint("Add layer");
+  g_selected_layer=g_document->add_layer(pstouch::Layer(name,pstouch::Image(g_document->width(),g_document->height(),{0,0,0,0})));
   render_document(); return true;
  } catch(...) { return false; }
 }
 void toggle_selected_visibility(){
  if(!g_document||g_document->layers().empty())return;
  const auto& layer=g_document->layers()[g_selected_layer];
- g_document->set_layer_visibility(g_selected_layer,!layer.visible); g_document->checkpoint("Toggle layer visibility"); render_document();
+ g_document->checkpoint("Toggle layer visibility"); g_document->set_layer_visibility(g_selected_layer,!layer.visible); render_document();
 }
 void duplicate_selected_layer(){
  if(!g_document||g_document->layers().empty())return;
- try{g_selected_layer=g_document->duplicate_layer(g_selected_layer);g_document->checkpoint("Duplicate layer");render_document();}catch(...){MessageBoxW(g_hwnd,L"Não foi possível duplicar a camada.",L"PS Touch PC",MB_OK|MB_ICONWARNING);}
+ try{g_document->checkpoint("Duplicate layer");g_selected_layer=g_document->duplicate_layer(g_selected_layer);render_document();}catch(...){MessageBoxW(g_hwnd,L"Não foi possível duplicar a camada.",L"PS Touch PC",MB_OK|MB_ICONWARNING);}
 }
 void remove_selected_layer(){
  if(!g_document||g_document->layers().size()<2){MessageBoxW(g_hwnd,L"O documento precisa manter pelo menos uma camada.",L"PS Touch PC",MB_OK|MB_ICONINFORMATION);return;}
- g_document->remove_layer(g_selected_layer);if(g_selected_layer>=g_document->layers().size())g_selected_layer=g_document->layers().size()-1;g_document->checkpoint("Remove layer");render_document();
+ g_document->checkpoint("Remove layer");g_document->remove_layer(g_selected_layer);if(g_selected_layer>=g_document->layers().size())g_selected_layer=g_document->layers().size()-1;render_document();
 }
 void rotate_image(bool clockwise){
  if(!g_document||g_document->layers().empty())return;
  try {
-  g_document->rotate_canvas(clockwise);
   g_document->checkpoint(clockwise?"Rotate canvas clockwise":"Rotate canvas counterclockwise");
+  g_document->rotate_canvas(clockwise);
   render_document();
  } catch(const std::exception&) {
   MessageBoxW(g_hwnd,L"Não foi possível girar o documento sem perder conteúdo.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
@@ -172,15 +172,17 @@ void rotate_image(bool clockwise){
 }
 void flip_image(bool horizontal){
  if(!g_document||g_document->layers().empty())return;
+ g_document->checkpoint("Flip layer");
  auto& image=g_document->mutable_layers()[g_selected_layer].image;
  if(horizontal)pstouch::flip_horizontal(image);else pstouch::flip_vertical(image);
- g_document->checkpoint("Flip layer"); render_document();
+ render_document();
 }
 void apply_tone(bool use_sepia){
  if(!g_document||g_document->layers().empty())return;
+ g_document->checkpoint(use_sepia?"Sepia layer":"Grayscale layer");
  auto& image=g_document->mutable_layers()[g_selected_layer].image;
  if(use_sepia)pstouch::sepia(image);else pstouch::grayscale(image);
- g_document->checkpoint(use_sepia?"Sepia layer":"Grayscale layer"); render_document();
+ render_document();
 }
 void apply_photo_filter_command(UINT command) {
  if(!g_document || g_document->layers().empty()) {
