@@ -307,7 +307,7 @@ void draw_ui(HDC dc, RECT c) {
     if(yy+30>h-bottom-8)break;
     RECT lr{rx+8,yy,w-8,yy+30};fill(dc,lr,idx==g_selected_layer?RGB(57,91,125):PANEL);
     label(dc,rx+14,yy+8,layers[idx].visible?L"◉":L"○",layers[idx].visible?ACCENT:MUTED,12,true);
-    std::wstring lname;for(unsigned char ch:layers[idx].name)lname.push_back(ch<128?(wchar_t)ch:L'?');
+    std::wstring lname=utf8_to_wide(layers[idx].name);if(lname.empty()&&!layers[idx].name.empty())lname=L"(nome inválido)";
     if(lname.size()>20)lname.resize(20);
     label(dc,rx+38,yy+8,lname,TEXT,12,idx==g_selected_layer);
    }
