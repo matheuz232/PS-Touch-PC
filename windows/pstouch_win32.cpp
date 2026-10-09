@@ -182,7 +182,7 @@ std::string wide_to_utf8(const std::wstring& value) {
  if(value.empty()) return {};
  const int bytes=WideCharToMultiByte(CP_UTF8,0,value.data(),(int)value.size(),nullptr,0,nullptr,nullptr);
  if(bytes<=0) return {};
- std::string out((size_t)bytes,'\\0');
+ std::string out((size_t)bytes,'\0');
  if(WideCharToMultiByte(CP_UTF8,0,value.data(),(int)value.size(),out.data(),bytes,nullptr,nullptr)<=0) return {};
  return out;
 }
@@ -190,19 +190,19 @@ std::wstring utf8_to_wide(const std::string& value) {
  if(value.empty()) return {};
  const int chars=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,value.data(),(int)value.size(),nullptr,0);
  if(chars<=0) return {};
- std::wstring out((size_t)chars,L'\\0');
+ std::wstring out((size_t)chars,L'\0');
  if(MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,value.data(),(int)value.size(),out.data(),chars)<=0) return {};
  return out;
 }
 void open_project() {
  wchar_t path[32768]{};
  OPENFILENAMEW ofn{}; ofn.lStructSize=sizeof(ofn); ofn.hwndOwner=g_hwnd;
- ofn.lpstrFilter=L"PS Touch PC project (*.ptdoc)\\0*.ptdoc\\0All files\\0*.*\\0";
+ ofn.lpstrFilter=L"PS Touch PC project (*.ptdoc)\0*.ptdoc\0All files\0*.*\0";
  ofn.lpstrFile=path; ofn.nMaxFile=(DWORD)(sizeof(path)/sizeof(path[0]));
  ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST;
  if(!GetOpenFileNameW(&ofn)) return;
  try {
-  auto loaded=std::make_unique<pstouch::Document>(pstouch::Document::load(wide_to_utf8(path)));
+  auto loaded=std::make_unique<pstouch::Document>(pstouch::Document::load(wide_to_utf8(path))); loaded->checkpoint("Open project");
   auto composite=from_core_image(loaded->composite());
   if(!composite) throw std::runtime_error("could not render project composite");
   g_document=std::move(loaded); g_image=std::move(composite); g_selected_layer=0;
@@ -221,7 +221,7 @@ void save_project() {
  }
  if(!path[0]) wcscpy_s(path,L"projeto.ptdoc");
  OPENFILENAMEW ofn{}; ofn.lStructSize=sizeof(ofn); ofn.hwndOwner=g_hwnd;
- ofn.lpstrFilter=L"PS Touch PC project (*.ptdoc)\\0*.ptdoc\\0All files\\0*.*\\0";
+ ofn.lpstrFilter=L"PS Touch PC project (*.ptdoc)\0*.ptdoc\0All files\0*.*\0";
  ofn.lpstrFile=path; ofn.nMaxFile=(DWORD)(sizeof(path)/sizeof(path[0]));
  ofn.Flags=OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST; ofn.lpstrDefExt=L"ptdoc";
  if(!GetSaveFileNameW(&ofn)) return;
