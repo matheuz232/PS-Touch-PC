@@ -46,4 +46,6 @@ void adjust_exposure(Image& image, float stops); // exposure compensation in EV,
 void adjust_hue(Image& image, float degrees); // hue rotation, [-180, 180]
 void adjust_levels(Image& image, uint8_t black_point, uint8_t white_point, float gamma = 1.0f);
 void auto_contrast(Image& image); // stretch each RGB channel to its observed range
+void adjust_shadows_highlights(Image& image, float shadows, float highlights); // each in [-1, 1]
+void color_balance(Image& image, float red, float green, float blue); // channel gains in [-1, 1]
 }
