@@ -102,3 +102,8 @@ The rotate commands now rotate the complete document canvas and all layer pixels
 ### Iteration 21 — Win32 filter menu and expanded tonal controls
 
 The Windows shell now exposes the 100 photo-grade presets and native image operations from a **Filtros** popup menu. The core adds exposure compensation in EV, HSV hue rotation, black/white-point and gamma levels, and per-channel automatic contrast. These operations preserve alpha; hue rotation leaves neutral gray pixels neutral, levels validate the input range, and exposure is bounded to avoid unbounded values. The UI exposes practical preset actions for each operation while the core API accepts parameters for future dialogs/sliders. CI must pass on both Linux and Windows before this iteration is considered verified.
+
+
+### Iteration 22 — shadow/highlight recovery and channel color balance
+
+Added two more parameterized core adjustments. Shadow/highlight control applies a smooth luminance-weighted lift or reduction to dark and bright tones, while color balance applies independent bounded RGB gains. Both reject non-finite/out-of-range parameters and preserve alpha. The Win32 filter menu exposes conservative presets, and regression tests cover expected direction, alpha preservation, and invalid input.
