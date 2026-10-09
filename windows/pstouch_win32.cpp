@@ -95,16 +95,16 @@ bool choose_text_style() {
 }
 void commit_text() {
  if(!g_image || g_text_input.empty()) { g_text_capturing=false; g_text_input.clear(); InvalidateRect(g_hwnd,nullptr,FALSE); return; }
- FontFamily family(g_text_logfont.lfFaceName,&g_private_fonts);
- if(family.GetLastStatus()!=Ok) family=FontFamily(g_text_logfont.lfFaceName);
- if(family.GetLastStatus()!=Ok) { MessageBoxW(g_hwnd,L"A família selecionada não pôde ser carregada. Escolha outra fonte.",L"PS Touch PC",MB_OK|MB_ICONWARNING); g_text_capturing=false; g_text_input.clear(); InvalidateRect(g_hwnd,nullptr,FALSE); return; }
+ auto family=std::make_unique<FontFamily>(g_text_logfont.lfFaceName,&g_private_fonts);
+ if(family->GetLastStatus()!=Ok) family=std::make_unique<FontFamily>(g_text_logfont.lfFaceName);
+ if(family->GetLastStatus()!=Ok) { MessageBoxW(g_hwnd,L"A família selecionada não pôde ser carregada. Escolha outra fonte.",L"PS Touch PC",MB_OK|MB_ICONWARNING); g_text_capturing=false; g_text_input.clear(); InvalidateRect(g_hwnd,nullptr,FALSE); return; }
  INT style=FontStyleRegular;
  if(g_text_logfont.lfWeight>=FW_BOLD) style|=FontStyleBold;
  if(g_text_logfont.lfItalic) style|=FontStyleItalic;
  if(g_text_logfont.lfUnderline) style|=FontStyleUnderline;
  if(g_text_logfont.lfStrikeOut) style|=FontStyleStrikeout;
  const REAL font_size=(REAL)std::clamp(std::abs(g_text_logfont.lfHeight),1L,512L);
- Font text_font(&family,font_size,style,UnitPixel);
+ Font text_font(family.get(),font_size,style,UnitPixel);
  if(text_font.GetLastStatus()!=Ok) { MessageBoxW(g_hwnd,L"Não foi possível criar a fonte selecionada.",L"PS Touch PC",MB_OK|MB_ICONWARNING); g_text_capturing=false; g_text_input.clear(); InvalidateRect(g_hwnd,nullptr,FALSE); return; }
  push_undo();
  Graphics gr(g_image.get());
