@@ -7,12 +7,23 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
 namespace pstouch {
 namespace {
 void be16(std::ostream& o,uint16_t v){char b[2]={static_cast<char>(v>>8U),static_cast<char>(v)};o.write(b,2);}
 void be32(std::ostream& o,uint32_t v){char b[4]={static_cast<char>(v>>24U),static_cast<char>(v>>16U),static_cast<char>(v>>8U),static_cast<char>(v)};o.write(b,4);}
+bool replace_file(const std::string& temporary,const std::string& destination){
+#ifdef _WIN32
+    return MoveFileExA(temporary.c_str(),destination.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=0;
+#else
+    return std::rename(temporary.c_str(),destination.c_str())==0;
+#endif
 }
-void save_psd_flattened(const Image& image,const std::string& path){if(image.width()>30000||image.height()>30000)throw std::length_error("PSD dimensions exceed version-1 limits");const std::string tmp=path+".tmp";try{std::ofstream o(tmp,std::ios::binary|std::ios::trunc);if(!o)throw std::runtime_error("cannot create PSD file");o.write("8BPS",4);be16(o,1);char reserved[6]={0,0,0,0,0,0};o.write(reserved,6);be16(o,4);be32(o,image.height());be32(o,image.width());be16(o,8);be16(o,3);be32(o,0);be32(o,0);be32(o,0);be16(o,0);for(int channel=0;channel<4;++channel)for(const auto& p:image.pixels()){uint8_t v=channel==0?p.r:channel==1?p.g:channel==2?p.b:p.a;o.put(static_cast<char>(v));}o.flush();if(!o)throw std::runtime_error("PSD write failed");o.close();if(std::rename(tmp.c_str(),path.c_str())!=0)throw std::runtime_error("could not finalize PSD file");}catch(...){std::remove(tmp.c_str());throw;}}
+}
+void save_psd_flattened(const Image& image,const std::string& path){if(image.width()>30000||image.height()>30000)throw std::length_error("PSD dimensions exceed version-1 limits");const std::string tmp=path+".tmp";try{std::ofstream o(tmp,std::ios::binary|std::ios::trunc);if(!o)throw std::runtime_error("cannot create PSD file");o.write("8BPS",4);be16(o,1);char reserved[6]={0,0,0,0,0,0};o.write(reserved,6);be16(o,4);be32(o,image.height());be32(o,image.width());be16(o,8);be16(o,3);be32(o,0);be32(o,0);be32(o,0);be16(o,0);for(int channel=0;channel<4;++channel)for(const auto& p:image.pixels()){uint8_t v=channel==0?p.r:channel==1?p.g:channel==2?p.b:p.a;o.put(static_cast<char>(v));}o.flush();if(!o)throw std::runtime_error("PSD write failed");o.close();if(!replace_file(tmp,path))throw std::runtime_error("could not finalize PSD file");}catch(...){std::remove(tmp.c_str());throw;}}
 
 namespace {
 uint16_t read_be16(std::istream& i){unsigned char b[2]{};i.read(reinterpret_cast<char*>(b),2);if(!i)throw std::runtime_error("truncated PSD");return static_cast<uint16_t>((static_cast<uint16_t>(b[0])<<8U)|b[1]);}
