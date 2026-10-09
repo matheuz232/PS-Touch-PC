@@ -25,4 +25,19 @@ int main(){pstouch::Document d(3,3);d.add_layer(pstouch::Layer("base",pstouch::I
  assert(composite.can_redo() && composite.redo());
  assert(composite.layers()[1].visible);
 
- std::cout<<"PASS: layer operations, composite ordering/offset/visibility, history undo/redo and bounds checks\n";}
+ // Match the editor transaction order: mutate first, then record the resulting state.
+ pstouch::Document transactions(2,2,"transactions");
+ transactions.add_layer(pstouch::Layer("base",pstouch::Image(2,2,{1,2,3,255})));
+ transactions.checkpoint("Open image");
+ transactions.set_layer_visibility(0,false);
+ transactions.checkpoint("Hide base");
+ assert(!transactions.layers()[0].visible);
+ assert(transactions.undo() && transactions.layers()[0].visible);
+ assert(transactions.redo() && !transactions.layers()[0].visible);
+ transactions.set_layer_visibility(0,true);
+ transactions.checkpoint("Show base");
+ transactions.add_layer(pstouch::Layer("paint",pstouch::Image(1,1,{9,8,7,255})));
+ transactions.checkpoint("Add paint");
+ assert(transactions.undo() && transactions.layers().size()==1);
+ assert(transactions.redo() && transactions.layers().size()==2);
+ std::cout<<"PASS: layer operations, composite ordering/offset/visibility, history undo/redo including post-mutation checkpoints and bounds checks\n";}
