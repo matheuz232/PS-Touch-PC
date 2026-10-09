@@ -130,15 +130,29 @@ Document load_psd_layers(const std::string& path){
   r.image=Image(rw,rh,{0,0,0,0});
   std::vector<bool> seen(4,false);
   for(const auto& ch:r.channels){
-   const uint16_t compression=read_be16(i);if(compression!=0)throw std::runtime_error("layered PSD import currently supports raw layer channels only");
+   const uint16_t compression=read_be16(i);
    const uint64_t expected=static_cast<uint64_t>(rw)*rh;
-   if(ch.length!=expected+2)throw std::runtime_error("PSD layer channel length does not match bounds");
    int plane=-1;if(ch.id==-1)plane=3;else if(ch.id==0)plane=0;else if(ch.id==1)plane=1;else if(ch.id==2)plane=2;
+   const uint64_t remaining=static_cast<uint64_t>(ch.length)-2;
+   std::vector<uint8_t> decoded;
+   if(compression==0){
+    if(remaining!=expected)throw std::runtime_error("PSD raw layer channel length does not match bounds");
+    if(plane>=0){decoded.resize(static_cast<size_t>(expected));i.read(reinterpret_cast<char*>(decoded.data()),static_cast<std::streamsize>(decoded.size()));if(!i)throw std::runtime_error("truncated PSD layer pixels");}
+    else skip_bytes(i,static_cast<uint32_t>(remaining));
+   }else if(compression==1){
+    const uint64_t tableBytes=static_cast<uint64_t>(rh)*2;
+    if(remaining<tableBytes||remaining>0xffffffffULL)throw std::runtime_error("invalid PSD RLE layer channel length");
+    std::vector<uint16_t> rowLengths(rh);uint64_t packedLength=0;
+    for(auto& length:rowLengths){length=read_be16(i);packedLength+=length;}
+    if(packedLength!=remaining-tableBytes)throw std::runtime_error("PSD RLE layer channel length mismatch");
+    std::vector<uint8_t> packed(static_cast<size_t>(packedLength));i.read(reinterpret_cast<char*>(packed.data()),static_cast<std::streamsize>(packed.size()));if(!i)throw std::runtime_error("truncated PSD RLE layer channel");
+    if(plane>=0){decoded.resize(static_cast<size_t>(expected));size_t pos=0;for(uint32_t y=0;y<rh;++y){const size_t end=pos+rowLengths[y];if(end>packed.size())throw std::runtime_error("invalid PSD RLE layer row table");decode_packbits(packed,pos,end,decoded.data()+static_cast<size_t>(y)*rw,rw);if(pos!=end)throw std::runtime_error("extra bytes in PSD RLE layer row");}}
+   }else throw std::runtime_error("unsupported PSD layer channel compression");
    if(plane>=0){
     if(seen[static_cast<size_t>(plane)])throw std::runtime_error("duplicate PSD layer channel");
     seen[static_cast<size_t>(plane)]=true;
-    for(auto& p:r.image.mutable_pixels()){char v{};i.get(v);if(!i)throw std::runtime_error("truncated PSD layer pixels");const auto value=static_cast<uint8_t>(v);if(plane==0)p.r=value;else if(plane==1)p.g=value;else if(plane==2)p.b=value;else p.a=value;}
-   }else skip_bytes(i,static_cast<uint32_t>(expected));
+    for(size_t px=0;px<decoded.size();++px){auto& p=r.image.mutable_pixels()[px];const auto value=decoded[px];if(plane==0)p.r=value;else if(plane==1)p.g=value;else if(plane==2)p.b=value;else p.a=value;}
+   }
   }
   if(!seen[0]||!seen[1]||!seen[2])throw std::runtime_error("PSD layer is missing RGB channels");
   if(!seen[3])for(auto& p:r.image.mutable_pixels())p.a=255;
