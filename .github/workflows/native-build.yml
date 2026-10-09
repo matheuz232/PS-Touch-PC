@@ -1,0 +1,43 @@
+name: Native build and tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-core:
+    name: Linux core (GCC)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ libpng-dev libjpeg-dev
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --parallel 2
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  windows-x64:
+    name: Windows x64 (MSVC + Win32 shell)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: '${{ github.workspace }}\\vcpkg'
+          vcpkgJsonGlob: vcpkg.json
+      - name: Configure with MSVC and vcpkg
+        run: cmake -S . -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows
+      - name: Build core, tests, and Win32 application
+        run: cmake --build build --config Release --parallel 2
+      - name: Run core tests
+        run: ctest --test-dir build -C Release --output-on-failure
