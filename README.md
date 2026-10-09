@@ -112,3 +112,8 @@ Added two more parameterized core adjustments. Shadow/highlight control applies 
 ### Iteration 23 — selective vibrance
 
 Added a vibrance adjustment that increases or reduces saturation selectively: already-saturated colors are affected less than muted colors, while neutral gray remains neutral. The operation preserves alpha and validates finite parameters in the range [-1, 1]. The Windows **Filtros** menu exposes a conservative +55% action; regression tests cover muted-color enhancement, grayscale neutrality, desaturation, alpha preservation, and invalid values.
+
+
+### Iteration 24 — luminance histogram equalization
+
+Added global histogram equalization based on perceptual luminance. It expands tonal separation while scaling RGB together to reduce hue shifts, preserves alpha, and safely leaves empty or constant-luminance images unchanged. The Win32 filter menu exposes the operation, with regression coverage for tonal ordering, alpha preservation, and constant-image stability.
