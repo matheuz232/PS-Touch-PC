@@ -76,3 +76,8 @@ The Win32 executable now links against `pstouch_image_core`. Grayscale, sepia, 9
 ### Iteration 19 — regression coverage for document composition and history
 
 Expanded the native document-operation test to assert that compositing honors layer offsets, top-layer ordering and visibility, and that checkpoint-based undo/redo restores layer state in both directions. This protects the core behavior needed before the Win32 layer panel is connected to `Document`; it does not claim that the UI layer panel is integrated yet.
+
+
+### Iteration 20 — first live document/layer panel integration
+
+The Win32 shell now initializes a native `Document` when opening an image and renders its composite. The layer panel lists document layers and supports adding a transparent layer, selecting a layer, duplicating it, removing it (while preserving at least one layer), toggling visibility, and changing opacity from the panel bar. Grayscale/sepia and flip/rotation operations target the selected layer; placed text and mockup artwork are created as separate transparent layers instead of being flattened into the existing image. Undo/redo consults document history when available. The initial image state is checkpointed so the first edit can be undone. This is the first real connection to the layer model; `.ptdoc` project-file dialogs, editable vector/text objects, and full Unicode layer-name editing are not yet wired into the UI.
