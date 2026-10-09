@@ -18,7 +18,7 @@ This checklist defines the gates for a first public Windows x64 release. Passing
 - [ ] Verify PNG, JPEG, BMP and TIFF workflows and document PSD support/limitations accurately.
 - [ ] Verify layered PSD import/export with representative files in an external editor; record unsupported cases and avoid claiming full PSD compatibility.
 - [ ] Test layer creation, duplication, visibility, opacity, ordering, offsets, deletion, and .ptdoc save/reopen.
-- [ ] Test filter apply/cancel, history exhaustion behavior, alpha handling, and large-image memory pressure.
+- [ ] Test filter apply/cancel, forced filter failure rollback, history exhaustion behavior, alpha handling, and large-image memory pressure.
 - [ ] Resolve any reproducible crash, data-loss, corrupted-save, or broken-startup issue found during manual testing.
 - [ ] Add a release smoke-test procedure and preserve its results as release evidence.
 - [ ] Publish a versioned changelog, known-limitations list, build instructions, and portable-package instructions.
