@@ -49,4 +49,5 @@ void auto_contrast(Image& image); // stretch each RGB channel to its observed ra
 void adjust_shadows_highlights(Image& image, float shadows, float highlights); // each in [-1, 1]
 void color_balance(Image& image, float red, float green, float blue); // channel gains in [-1, 1]
 void adjust_vibrance(Image& image, float amount); // selective saturation, amount in [-1, 1]
+void equalize_luminance(Image& image); // histogram equalization on luminance, preserving alpha
 }
