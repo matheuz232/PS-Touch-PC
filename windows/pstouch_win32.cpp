@@ -213,6 +213,7 @@ void apply_photo_filter_command(UINT command) {
     case 1015: pstouch::adjust_shadows_highlights(image,0.35f,-0.15f); break;
     case 1016: pstouch::color_balance(image,0.12f,0.0f,-0.12f); break;
     case 1017: pstouch::adjust_vibrance(image,0.55f); break;
+    case 1018: pstouch::equalize_luminance(image); break;
     default: return;
    }
    g_document->checkpoint("Apply image filter");
@@ -254,6 +255,7 @@ void show_filter_menu(HWND hwnd,int x,int y) {
  AppendMenuW(menu,MF_STRING,1015,L"Abrir sombras / reduzir realces");
  AppendMenuW(menu,MF_STRING,1016,L"Equilíbrio de cores (frio/quente)");
  AppendMenuW(menu,MF_STRING,1017,L"Vibração seletiva +55%");
+ AppendMenuW(menu,MF_STRING,1018,L"Equalizar luminância (histograma)");
  const UINT selected=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,x,y,0,hwnd,nullptr);
  if(selected) apply_photo_filter_command(selected);
  DestroyMenu(menu);
