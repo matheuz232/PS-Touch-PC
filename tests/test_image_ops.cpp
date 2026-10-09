@@ -35,5 +35,6 @@ int main(){
  bad=false;try{pstouch::adjust_shadows_highlights(tones,2.0f,0.0f);}catch(const std::invalid_argument&){bad=true;}assert(bad);
  bad=false;try{pstouch::color_balance(balance,0.0f,NAN,0.0f);}catch(const std::invalid_argument&){bad=true;}assert(bad);
 
+ pstouch::Image vibrant(2,1,{128,128,128,44});vibrant.at(1,0)={180,120,80,211};auto beforeV=vibrant;pstouch::adjust_vibrance(vibrant,1.0f);assert(vibrant.at(0,0).r==128&&vibrant.at(0,0).g==128&&vibrant.at(0,0).b==128);assert(vibrant.at(1,0).r>beforeV.at(1,0).r&&vibrant.at(1,0).b<beforeV.at(1,0).b);assert(vibrant.at(0,0).a==44&&vibrant.at(1,0).a==211);pstouch::adjust_vibrance(vibrant,-1.0f);assert(std::abs((int)vibrant.at(1,0).r-(int)vibrant.at(1,0).g)<std::abs((int)beforeV.at(1,0).r-(int)beforeV.at(1,0).g));bad=false;try{pstouch::adjust_vibrance(vibrant,1.1f);}catch(const std::invalid_argument&){bad=true;}assert(bad);
  std::cout<<"PASS: transforms, color filters, 100% core ops, blur, sharpen, edges, gamma, temperature, vignette and pixelation\\n";
 }
