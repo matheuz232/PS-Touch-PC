@@ -223,4 +223,35 @@ void adjust_vibrance(Image& image,float amount){
     }
 }
 
+
+void equalize_luminance(Image& image){
+    if(image.pixels().empty())return;
+    std::array<uint64_t,256> histogram{};
+    for(const auto& p:image.pixels()){
+        const auto y=clamp_byte(0.2126f*p.r+0.7152f*p.g+0.0722f*p.b);
+        ++histogram[y];
+    }
+    uint64_t first=0,cumulative=0;
+    bool found=false;
+    for(size_t i=0;i<histogram.size();++i){
+        cumulative+=histogram[i];
+        if(!found&&histogram[i]!=0){first=cumulative;found=true;}
+    }
+    const uint64_t total=image.pixels().size();
+    if(!found||total<=first)return;
+    std::array<uint8_t,256> lut{};
+    cumulative=0;
+    for(size_t i=0;i<histogram.size();++i){
+        cumulative+=histogram[i];
+        const uint64_t adjusted=cumulative>first?cumulative-first:0;
+        lut[i]=clamp_byte(static_cast<float>(adjusted)*255.0f/static_cast<float>(total-first));
+    }
+    for(auto& p:image.mutable_pixels()){
+        const float oldY=0.2126f*p.r+0.7152f*p.g+0.0722f*p.b;
+        if(oldY<=0.0f)continue;
+        const float scale=lut[clamp_byte(oldY)]/oldY;
+        p.r=clamp_byte(p.r*scale);p.g=clamp_byte(p.g*scale);p.b=clamp_byte(p.b*scale);
+    }
+}
+
 }
