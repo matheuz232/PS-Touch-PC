@@ -258,14 +258,14 @@ void apply_photo_filter_command(UINT command) {
      pstouch::adjust_levels(image,black_values[i],white_values[i],gamma_values[i]); break;
     }
     case 1200: case 1201: case 1202: case 1203: case 1204: case 1205: {
-     constexpr float shadows[]={0.2f,0.35f,0.5f,0.65f,0.8f,0.5f};
+     constexpr float shadows[]={0.2f,0.35f,0.5f,0.65f,0.8f,1.0f};
      constexpr float highlights[]={0.0f,0.0f,0.0f,0.0f,0.0f,-0.5f};
      pstouch::adjust_shadows_highlights(image,shadows[command-1200],highlights[command-1200]); break;
     }
     case 1210: case 1211: case 1212: case 1213: case 1214: case 1215: {
-     constexpr float red[]={0.15f,0.10f,0.05f,0.0f,-0.05f,-0.15f};
+     constexpr float red[]={-0.15f,-0.10f,-0.05f,0.0f,0.05f,0.15f};
      constexpr float green[]={0.0f,0.05f,0.0f,0.0f,0.0f,0.0f};
-     constexpr float blue[]={-0.15f,-0.10f,-0.05f,0.0f,0.05f,0.15f};
+     constexpr float blue[]={0.15f,0.10f,0.05f,0.0f,-0.05f,-0.15f};
      const size_t i=command-1210;
      pstouch::color_balance(image,red[i],green[i],blue[i]); break;
     }
