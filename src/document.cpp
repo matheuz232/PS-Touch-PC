@@ -7,12 +7,23 @@
 #include <limits>
 #include <stdexcept>
 #include <utility>
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
 namespace pstouch {
 namespace {
 constexpr char kMagic[8]={'P','T','D','O','C','0','0','1'};
 constexpr uint32_t kMaxLayers=512, kMaxString=4096;
 void write_bytes(std::ostream& o,const void* p,size_t n){o.write(static_cast<const char*>(p),static_cast<std::streamsize>(n));if(!o)throw std::runtime_error("project write failed");}
 void read_bytes(std::istream& i,void* p,size_t n){i.read(static_cast<char*>(p),static_cast<std::streamsize>(n));if(!i)throw std::runtime_error("invalid or truncated project file");}
+bool replace_file(const std::string& temporary,const std::string& destination){
+#ifdef _WIN32
+    return MoveFileExA(temporary.c_str(),destination.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=0;
+#else
+    return std::rename(temporary.c_str(),destination.c_str())==0;
+#endif
+}
 template<class T> void write_le(std::ostream& o,T v){static_assert(std::is_integral<T>::value,"integer only");for(size_t n=0;n<sizeof(T);++n){const uint8_t b=static_cast<uint8_t>((static_cast<uint64_t>(v)>>(n*8U))&255U);write_bytes(o,&b,1);}}
 template<class T> T read_le(std::istream& i){static_assert(std::is_integral<T>::value,"integer only");uint64_t v=0;for(size_t n=0;n<sizeof(T);++n){uint8_t b{};read_bytes(i,&b,1);v|=static_cast<uint64_t>(b)<<(n*8U);}return static_cast<T>(v);}
 void write_string(std::ostream& o,const std::string& s){if(s.size()>kMaxString)throw std::length_error("project string too long");write_le<uint32_t>(o,static_cast<uint32_t>(s.size()));write_bytes(o,s.data(),s.size());}
@@ -32,7 +43,7 @@ void Document::set_layer_visibility(size_t i,bool v){if(i>=layers_.size())throw 
 void Document::set_layer_opacity(size_t i,uint8_t v){if(i>=layers_.size())throw std::out_of_range("layer index");layers_[i].opacity=v;}
 size_t Document::duplicate_layer(size_t i){if(i>=layers_.size())throw std::out_of_range("layer index");if(layers_.size()>=kMaxLayers)throw std::length_error("layer limit reached");Layer copy=layers_[i];copy.name += " copy";layers_.insert(layers_.begin()+static_cast<std::ptrdiff_t>(i+1),std::move(copy));return i+1;}
 Image Document::composite()const{Image out(width_,height_,{0,0,0,0});for(const auto& layer:layers_)composite_layer(out,layer);return out;}
-void Document::save(const std::string& path)const{if(layers_.size()>kMaxLayers)throw std::length_error("too many layers");const std::string tmp=path+".tmp";try{std::ofstream o(tmp,std::ios::binary|std::ios::trunc);if(!o)throw std::runtime_error("cannot create project file");write_bytes(o,kMagic,sizeof(kMagic));write_le<uint32_t>(o,width_);write_le<uint32_t>(o,height_);write_string(o,name_);write_le<uint32_t>(o,static_cast<uint32_t>(layers_.size()));for(const auto& l:layers_){write_string(o,l.name);write_le<int32_t>(o,l.x);write_le<int32_t>(o,l.y);write_le<uint8_t>(o,l.opacity);write_le<uint8_t>(o,l.visible?1:0);write_le<uint8_t>(o,static_cast<uint8_t>(l.blend));write_le<uint8_t>(o,0);write_le<uint32_t>(o,l.image.width());write_le<uint32_t>(o,l.image.height());for(const auto& p:l.image.pixels()){write_le<uint8_t>(o,p.r);write_le<uint8_t>(o,p.g);write_le<uint8_t>(o,p.b);write_le<uint8_t>(o,p.a);}}o.flush();if(!o)throw std::runtime_error("project flush failed");o.close();if(std::rename(tmp.c_str(),path.c_str())!=0)throw std::runtime_error("could not finalize project file");}catch(...){std::remove(tmp.c_str());throw;}}
+void Document::save(const std::string& path)const{if(layers_.size()>kMaxLayers)throw std::length_error("too many layers");const std::string tmp=path+".tmp";try{std::ofstream o(tmp,std::ios::binary|std::ios::trunc);if(!o)throw std::runtime_error("cannot create project file");write_bytes(o,kMagic,sizeof(kMagic));write_le<uint32_t>(o,width_);write_le<uint32_t>(o,height_);write_string(o,name_);write_le<uint32_t>(o,static_cast<uint32_t>(layers_.size()));for(const auto& l:layers_){write_string(o,l.name);write_le<int32_t>(o,l.x);write_le<int32_t>(o,l.y);write_le<uint8_t>(o,l.opacity);write_le<uint8_t>(o,l.visible?1:0);write_le<uint8_t>(o,static_cast<uint8_t>(l.blend));write_le<uint8_t>(o,0);write_le<uint32_t>(o,l.image.width());write_le<uint32_t>(o,l.image.height());for(const auto& p:l.image.pixels()){write_le<uint8_t>(o,p.r);write_le<uint8_t>(o,p.g);write_le<uint8_t>(o,p.b);write_le<uint8_t>(o,p.a);}}o.flush();if(!o)throw std::runtime_error("project flush failed");o.close();if(!replace_file(tmp,path))throw std::runtime_error("could not finalize project file");}catch(...){std::remove(tmp.c_str());throw;}}
 Document Document::load(const std::string& path){std::ifstream i(path,std::ios::binary);if(!i)throw std::runtime_error("cannot open project file");char magic[8];read_bytes(i,magic,sizeof(magic));if(std::memcmp(magic,kMagic,sizeof(magic))!=0)throw std::runtime_error("not a PTDOC v1 project");uint32_t w=read_le<uint32_t>(i),h=read_le<uint32_t>(i);Document d(w,h,read_string(i));uint32_t count=read_le<uint32_t>(i);if(count>kMaxLayers)throw std::runtime_error("project has too many layers");for(uint32_t n=0;n<count;++n){std::string name=read_string(i);int32_t x=read_le<int32_t>(i),y=read_le<int32_t>(i);uint8_t opacity=read_le<uint8_t>(i),visible=read_le<uint8_t>(i),blend=read_le<uint8_t>(i);(void)read_le<uint8_t>(i);uint32_t lw=read_le<uint32_t>(i),lh=read_le<uint32_t>(i);if(!lw||!lh||static_cast<uint64_t>(lw)*lh>100000000ULL||blend>static_cast<uint8_t>(BlendMode::Subtract)||visible>1)throw std::runtime_error("invalid layer metadata");Image image(lw,lh);for(auto& p:image.mutable_pixels()){p.r=read_le<uint8_t>(i);p.g=read_le<uint8_t>(i);p.b=read_le<uint8_t>(i);p.a=read_le<uint8_t>(i);}Layer layer(std::move(name),std::move(image));layer.x=x;layer.y=y;layer.opacity=opacity;layer.visible=visible!=0;layer.blend=static_cast<BlendMode>(blend);d.add_layer(std::move(layer));}char extra;if(i.read(&extra,1))throw std::runtime_error("unexpected trailing data in project");return d;}
 Document::State Document::snapshot(std::string label)const{return {std::move(label),width_,height_,name_,layers_};}
 void Document::restore(const State&s){width_=s.width;height_=s.height;name_=s.name;layers_=s.layers;}
