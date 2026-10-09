@@ -178,6 +178,60 @@ void apply_tone(bool use_sepia){
  if(use_sepia)pstouch::sepia(image);else pstouch::grayscale(image);
  render_document();
 }
+std::string wide_to_utf8(const std::wstring& value) {
+ if(value.empty()) return {};
+ const int bytes=WideCharToMultiByte(CP_UTF8,0,value.data(),(int)value.size(),nullptr,0,nullptr,nullptr);
+ if(bytes<=0) return {};
+ std::string out((size_t)bytes,'\\0');
+ if(WideCharToMultiByte(CP_UTF8,0,value.data(),(int)value.size(),out.data(),bytes,nullptr,nullptr)<=0) return {};
+ return out;
+}
+std::wstring utf8_to_wide(const std::string& value) {
+ if(value.empty()) return {};
+ const int chars=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,value.data(),(int)value.size(),nullptr,0);
+ if(chars<=0) return {};
+ std::wstring out((size_t)chars,L'\\0');
+ if(MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,value.data(),(int)value.size(),out.data(),chars)<=0) return {};
+ return out;
+}
+void open_project() {
+ wchar_t path[32768]{};
+ OPENFILENAMEW ofn{}; ofn.lStructSize=sizeof(ofn); ofn.hwndOwner=g_hwnd;
+ ofn.lpstrFilter=L"PS Touch PC project (*.ptdoc)\\0*.ptdoc\\0All files\\0*.*\\0";
+ ofn.lpstrFile=path; ofn.nMaxFile=(DWORD)(sizeof(path)/sizeof(path[0]));
+ ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST;
+ if(!GetOpenFileNameW(&ofn)) return;
+ try {
+  auto loaded=std::make_unique<pstouch::Document>(pstouch::Document::load(wide_to_utf8(path)));
+  auto composite=from_core_image(loaded->composite());
+  if(!composite) throw std::runtime_error("could not render project composite");
+  g_document=std::move(loaded); g_image=std::move(composite); g_selected_layer=0;
+  g_path=path; g_zoom=1.0f; g_undo.clear(); g_redo.clear(); g_mockup_design.reset();
+  InvalidateRect(g_hwnd,nullptr,TRUE);
+ } catch(const std::exception&) {
+  MessageBoxW(g_hwnd,L"Não foi possível abrir o projeto .ptdoc. O arquivo pode estar corrompido ou ser incompatível.",L"PS Touch PC",MB_OK|MB_ICONERROR);
+ }
+}
+void save_project() {
+ if(!g_document) { MessageBoxW(g_hwnd,L"Abra ou crie um documento antes de salvar o projeto.",L"PS Touch PC",MB_OK|MB_ICONINFORMATION); return; }
+ wchar_t path[32768]{};
+ if(!g_path.empty() && g_path!=L"Nenhuma imagem aberta") {
+  const auto ext=g_path.find_last_of(L'.');
+  if(ext!=std::wstring::npos && _wcsicmp(g_path.c_str()+ext,L".ptdoc")==0) wcsncpy_s(path,g_path.c_str(),_TRUNCATE);
+ }
+ if(!path[0]) wcscpy_s(path,L"projeto.ptdoc");
+ OPENFILENAMEW ofn{}; ofn.lStructSize=sizeof(ofn); ofn.hwndOwner=g_hwnd;
+ ofn.lpstrFilter=L"PS Touch PC project (*.ptdoc)\\0*.ptdoc\\0All files\\0*.*\\0";
+ ofn.lpstrFile=path; ofn.nMaxFile=(DWORD)(sizeof(path)/sizeof(path[0]));
+ ofn.Flags=OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST; ofn.lpstrDefExt=L"ptdoc";
+ if(!GetSaveFileNameW(&ofn)) return;
+ try {
+  g_document->save(wide_to_utf8(path)); g_path=path;
+  MessageBoxW(g_hwnd,L"Projeto salvo com camadas e metadados.",L"PS Touch PC",MB_OK|MB_ICONINFORMATION);
+ } catch(const std::exception&) {
+  MessageBoxW(g_hwnd,L"Falha ao salvar o projeto .ptdoc.",L"PS Touch PC",MB_OK|MB_ICONERROR);
+ }
+}
 void open_image() { wchar_t path[MAX_PATH]{}; OPENFILENAMEW ofn{}; ofn.lStructSize=sizeof(ofn); ofn.hwndOwner=g_hwnd; ofn.lpstrFilter=L"Images\0*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff\0All files\0*.*\0"; ofn.lpstrFile=path; ofn.nMaxFile=MAX_PATH; ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST; if(GetOpenFileNameW(&ofn)){ auto candidate=std::make_unique<Bitmap>(path); if(candidate->GetLastStatus()==Ok){if(initialize_document_from_bitmap(*candidate,"Image")){g_image=std::move(candidate);g_path=path;g_zoom=1.0f;g_undo.clear();g_redo.clear();}else MessageBoxW(g_hwnd,L"Falha ao converter a imagem para o documento editável.",L"PS Touch PC",MB_OK|MB_ICONERROR);} else MessageBoxW(g_hwnd,L"Não foi possível abrir esta imagem. Use PNG, JPEG, BMP ou TIFF nesta versão.",L"PS Touch PC",MB_ICONWARNING); InvalidateRect(g_hwnd,nullptr,TRUE); } }
 void start_mockup() {
  if(!g_image){MessageBoxW(g_hwnd,L"Abra primeiro uma foto do produto ou uma imagem-base para o mockup.",L"PS Touch PC",MB_OK|MB_ICONINFORMATION);return;}
@@ -285,7 +339,7 @@ void draw_ui(HDC dc, RECT c) {
  } }
  else { label(dc,cx+std::max(12,cw/2-110),top+std::max(20,usableH/2-12),L"Abra uma imagem para começar",RGB(210,210,210),17,true); label(dc,cx+std::max(12,cw/2-138),top+std::max(48,usableH/2+20),L"PNG, JPEG, BMP, TIFF (preview nesta versão)",MUTED,12); }
 }
-LRESULT CALLBACK wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){switch(msg){case WM_SIZE:InvalidateRect(hwnd,nullptr,FALSE);return 0;case WM_KEYDOWN:if(g_text_capturing){if(wp==VK_RETURN){if(GetKeyState(VK_CONTROL)&0x8000)commit_text();else if(g_text_input.size()<2048)g_text_input.push_back(L"\n"[0]);InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp==VK_ESCAPE){g_text_capturing=false;g_text_input.clear();InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp==VK_BACK){if(!g_text_input.empty()){if(g_text_input.size()>=2&&g_text_input[g_text_input.size()-1]>=0xDC00&&g_text_input[g_text_input.size()-1]<=0xDFFF&&g_text_input[g_text_input.size()-2]>=0xD800&&g_text_input[g_text_input.size()-2]<=0xDBFF)g_text_input.resize(g_text_input.size()-2);else g_text_input.pop_back();}InvalidateRect(hwnd,nullptr,FALSE);return 0;}return 0;}if(g_mockup_design){if(wp==VK_ESCAPE){cancel_mockup();return 0;}if(wp==VK_RETURN){commit_mockup();return 0;}if(wp==VK_LEFT)g_mockup_dx-=5;if(wp==VK_RIGHT)g_mockup_dx+=5;if(wp==VK_UP)g_mockup_dy-=5;if(wp==VK_DOWN)g_mockup_dy+=5;if(wp==VK_ADD||wp==VK_OEM_PLUS)g_mockup_scale=std::min(1.5f,g_mockup_scale+0.03f);if(wp==VK_SUBTRACT||wp==VK_OEM_MINUS)g_mockup_scale=std::max(0.05f,g_mockup_scale-0.03f);InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp==VK_F4){g_showLayers=!g_showLayers;InvalidateRect(hwnd,nullptr,TRUE);return 0;}if(wp==VK_F3){g_showTools=!g_showTools;InvalidateRect(hwnd,nullptr,TRUE);return 0;}if(wp=='O' && (GetKeyState(VK_CONTROL)&0x8000)){open_image();return 0;}if(wp==VK_ESCAPE){g_zoom=1.0f;InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp=='Z'&&(GetKeyState(VK_CONTROL)&0x8000)){undo_image();return 0;}if(wp=='Y'&&(GetKeyState(VK_CONTROL)&0x8000)){redo_image();return 0;}if(wp=='S'&&(GetKeyState(VK_CONTROL)&0x8000)){save_image();return 0;}return 0;case WM_CHAR:if(g_text_capturing){if(wp>=32 && wp!=127 && g_text_input.size()<2048)g_text_input.push_back((wchar_t)wp);InvalidateRect(hwnd,nullptr,FALSE);return 0;}break;case WM_LBUTTONUP:{int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);{RECT client{};GetClientRect(hwnd,&client);int client_w=client.right;bool compact=client_w<860,tiny=client_w<570;int tool_panel_w=g_showTools?(tiny?0:(compact?44:190)):0;int right_panel_w=g_showLayers?(tiny?0:(compact?0:230)):0;if(client_w-tool_panel_w-right_panel_w<160){right_panel_w=0;tool_panel_w=g_showTools?36:0;}int tool=-1;if(tool_panel_w>50&&x>=10&&x<tool_panel_w-10){for(int i=0;i<10;i++){int yy=76+44+i*35;if(y>=yy&&y<yy+28){tool=i;break;}}}else if(tool_panel_w>0&&tool_panel_w<=50&&x>=7&&x<tool_panel_w-7){for(int i=0;i<8;i++){int yy=76+12+i*42;if(y>=yy&&y<yy+30){tool=i;break;}}}if(tool>=0){g_active_tool=tool;if(tool==6){if(!g_text_mode){if(choose_text_style())g_text_mode=true;}else g_text_mode=false;g_text_capturing=false;g_text_input.clear();}InvalidateRect(hwnd,nullptr,FALSE);return 0;}}if(g_text_mode && g_image && y>=76){RECT client{};GetClientRect(hwnd,&client);int w=client.right,h=client.bottom;int bottom=26,top=76;bool compact=w<860,tiny=w<570;int left=g_showTools?(tiny?0:(compact?44:190)):0;int right=g_showLayers?(tiny?0:(compact?0:230)):0;if(w-left-right<160){right=0;left=g_showTools?36:0;}int cw=std::max(0,w-left-right),usableH=std::max(0,h-top-bottom);if(x>=left&&x<left+cw&&cw>20&&usableH>20){double scale=std::min((double)std::max(1,cw-48)/g_image->GetWidth(),(double)std::max(1,usableH-48)/g_image->GetHeight())*g_zoom;scale=std::max(0.01,std::min(scale,8.0));int iw=(int)(g_image->GetWidth()*scale),ih=(int)(g_image->GetHeight()*scale);int ix=left+(cw-iw)/2,iy=top+(usableH-ih)/2;if(x>=ix&&x<=ix+iw&&y>=iy&&y<=iy+ih){g_text_image_x=std::clamp((int)((x-ix)/scale),0,(int)g_image->GetWidth()-1);g_text_image_y=std::clamp((int)((y-iy)/scale),0,(int)g_image->GetHeight()-1);g_text_screen_x=x;g_text_screen_y=y;g_text_input.clear();g_text_capturing=true;SetFocus(hwnd);InvalidateRect(hwnd,nullptr,FALSE);return 0;}}}RECT client{};GetClientRect(hwnd,&client);int client_w=client.right;if(g_showLayers&&x>=client_w-230&&client_w>=860&&y>=125){
+LRESULT CALLBACK wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){switch(msg){case WM_SIZE:InvalidateRect(hwnd,nullptr,FALSE);return 0;case WM_KEYDOWN:if(g_text_capturing){if(wp==VK_RETURN){if(GetKeyState(VK_CONTROL)&0x8000)commit_text();else if(g_text_input.size()<2048)g_text_input.push_back(L"\n"[0]);InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp==VK_ESCAPE){g_text_capturing=false;g_text_input.clear();InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp==VK_BACK){if(!g_text_input.empty()){if(g_text_input.size()>=2&&g_text_input[g_text_input.size()-1]>=0xDC00&&g_text_input[g_text_input.size()-1]<=0xDFFF&&g_text_input[g_text_input.size()-2]>=0xD800&&g_text_input[g_text_input.size()-2]<=0xDBFF)g_text_input.resize(g_text_input.size()-2);else g_text_input.pop_back();}InvalidateRect(hwnd,nullptr,FALSE);return 0;}return 0;}if(g_mockup_design){if(wp==VK_ESCAPE){cancel_mockup();return 0;}if(wp==VK_RETURN){commit_mockup();return 0;}if(wp==VK_LEFT)g_mockup_dx-=5;if(wp==VK_RIGHT)g_mockup_dx+=5;if(wp==VK_UP)g_mockup_dy-=5;if(wp==VK_DOWN)g_mockup_dy+=5;if(wp==VK_ADD||wp==VK_OEM_PLUS)g_mockup_scale=std::min(1.5f,g_mockup_scale+0.03f);if(wp==VK_SUBTRACT||wp==VK_OEM_MINUS)g_mockup_scale=std::max(0.05f,g_mockup_scale-0.03f);InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp==VK_F4){g_showLayers=!g_showLayers;InvalidateRect(hwnd,nullptr,TRUE);return 0;}if(wp==VK_F3){g_showTools=!g_showTools;InvalidateRect(hwnd,nullptr,TRUE);return 0;}if(wp=='O' && (GetKeyState(VK_CONTROL)&0x8000)){if(GetKeyState(VK_SHIFT)&0x8000)open_project();else open_image();return 0;}if(wp==VK_ESCAPE){g_zoom=1.0f;InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp=='Z'&&(GetKeyState(VK_CONTROL)&0x8000)){undo_image();return 0;}if(wp=='Y'&&(GetKeyState(VK_CONTROL)&0x8000)){redo_image();return 0;}if(wp=='S'&&(GetKeyState(VK_CONTROL)&0x8000)){if(GetKeyState(VK_SHIFT)&0x8000)save_project();else save_image();return 0;}return 0;case WM_CHAR:if(g_text_capturing){if(wp>=32 && wp!=127 && g_text_input.size()<2048)g_text_input.push_back((wchar_t)wp);InvalidateRect(hwnd,nullptr,FALSE);return 0;}break;case WM_LBUTTONUP:{int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);{RECT client{};GetClientRect(hwnd,&client);int client_w=client.right;bool compact=client_w<860,tiny=client_w<570;int tool_panel_w=g_showTools?(tiny?0:(compact?44:190)):0;int right_panel_w=g_showLayers?(tiny?0:(compact?0:230)):0;if(client_w-tool_panel_w-right_panel_w<160){right_panel_w=0;tool_panel_w=g_showTools?36:0;}int tool=-1;if(tool_panel_w>50&&x>=10&&x<tool_panel_w-10){for(int i=0;i<10;i++){int yy=76+44+i*35;if(y>=yy&&y<yy+28){tool=i;break;}}}else if(tool_panel_w>0&&tool_panel_w<=50&&x>=7&&x<tool_panel_w-7){for(int i=0;i<8;i++){int yy=76+12+i*42;if(y>=yy&&y<yy+30){tool=i;break;}}}if(tool>=0){g_active_tool=tool;if(tool==6){if(!g_text_mode){if(choose_text_style())g_text_mode=true;}else g_text_mode=false;g_text_capturing=false;g_text_input.clear();}InvalidateRect(hwnd,nullptr,FALSE);return 0;}}if(g_text_mode && g_image && y>=76){RECT client{};GetClientRect(hwnd,&client);int w=client.right,h=client.bottom;int bottom=26,top=76;bool compact=w<860,tiny=w<570;int left=g_showTools?(tiny?0:(compact?44:190)):0;int right=g_showLayers?(tiny?0:(compact?0:230)):0;if(w-left-right<160){right=0;left=g_showTools?36:0;}int cw=std::max(0,w-left-right),usableH=std::max(0,h-top-bottom);if(x>=left&&x<left+cw&&cw>20&&usableH>20){double scale=std::min((double)std::max(1,cw-48)/g_image->GetWidth(),(double)std::max(1,usableH-48)/g_image->GetHeight())*g_zoom;scale=std::max(0.01,std::min(scale,8.0));int iw=(int)(g_image->GetWidth()*scale),ih=(int)(g_image->GetHeight()*scale);int ix=left+(cw-iw)/2,iy=top+(usableH-ih)/2;if(x>=ix&&x<=ix+iw&&y>=iy&&y<=iy+ih){g_text_image_x=std::clamp((int)((x-ix)/scale),0,(int)g_image->GetWidth()-1);g_text_image_y=std::clamp((int)((y-iy)/scale),0,(int)g_image->GetHeight()-1);g_text_screen_x=x;g_text_screen_y=y;g_text_input.clear();g_text_capturing=true;SetFocus(hwnd);InvalidateRect(hwnd,nullptr,FALSE);return 0;}}}RECT client{};GetClientRect(hwnd,&client);int client_w=client.right;if(g_showLayers&&x>=client_w-230&&client_w>=860&&y>=125){
  int rx=client_w-230;
  if(y>=125&&y<155&&x>=rx+8&&x<rx+230){if(x<rx+115)add_transparent_layer("Layer");else duplicate_selected_layer();return 0;}
  if(y>=160&&y<188&&x>=rx+8&&x<rx+230){if(x<rx+115)toggle_selected_visibility();else remove_selected_layer();return 0;}
