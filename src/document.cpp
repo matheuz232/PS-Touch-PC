@@ -44,6 +44,21 @@ void Document::set_layer_visibility(size_t i,bool v){if(i>=layers_.size())throw 
 void Document::set_layer_opacity(size_t i,uint8_t v){if(i>=layers_.size())throw std::out_of_range("layer index");layers_[i].opacity=v;}
 size_t Document::duplicate_layer(size_t i){if(i>=layers_.size())throw std::out_of_range("layer index");if(layers_.size()>=kMaxLayers)throw std::length_error("layer limit reached");Layer copy=layers_[i];copy.name += " copy";layers_.insert(layers_.begin()+static_cast<std::ptrdiff_t>(i+1),std::move(copy));return i+1;}
 Image Document::composite()const{Image out(width_,height_,{0,0,0,0});for(const auto& layer:layers_)composite_layer(out,layer);return out;}
+void Document::rotate_canvas(bool clockwise){
+    std::vector<Layer> rotated=layers_;
+    const int64_t old_width=width_,old_height=height_;
+    for(auto& layer:rotated){
+        const int64_t nx=clockwise?old_height-(static_cast<int64_t>(layer.y)+layer.image.height()):layer.y;
+        const int64_t ny=clockwise?layer.x:old_width-(static_cast<int64_t>(layer.x)+layer.image.width());
+        if(nx<std::numeric_limits<int32_t>::min()||nx>std::numeric_limits<int32_t>::max()||
+           ny<std::numeric_limits<int32_t>::min()||ny>std::numeric_limits<int32_t>::max())
+            throw std::overflow_error("rotated layer offset exceeds supported range");
+        layer.image=clockwise?rotate_90_clockwise(layer.image):rotate_90_counterclockwise(layer.image);
+        layer.x=static_cast<int32_t>(nx);layer.y=static_cast<int32_t>(ny);
+    }
+    layers_=std::move(rotated);
+    std::swap(width_,height_);
+}
 void Document::save(const std::string& path)const{if(layers_.size()>kMaxLayers)throw std::length_error("too many layers");const auto destination=std::filesystem::u8path(path);auto tmp=destination;tmp += ".tmp";try{std::ofstream o(tmp,std::ios::binary|std::ios::trunc);if(!o)throw std::runtime_error("cannot create project file");write_bytes(o,kMagic,sizeof(kMagic));write_le<uint32_t>(o,width_);write_le<uint32_t>(o,height_);write_string(o,name_);write_le<uint32_t>(o,static_cast<uint32_t>(layers_.size()));for(const auto& l:layers_){write_string(o,l.name);write_le<int32_t>(o,l.x);write_le<int32_t>(o,l.y);write_le<uint8_t>(o,l.opacity);write_le<uint8_t>(o,l.visible?1:0);write_le<uint8_t>(o,static_cast<uint8_t>(l.blend));write_le<uint8_t>(o,0);write_le<uint32_t>(o,l.image.width());write_le<uint32_t>(o,l.image.height());for(const auto& p:l.image.pixels()){write_le<uint8_t>(o,p.r);write_le<uint8_t>(o,p.g);write_le<uint8_t>(o,p.b);write_le<uint8_t>(o,p.a);}}o.flush();if(!o)throw std::runtime_error("project flush failed");o.close();if(!replace_file(tmp,destination))throw std::runtime_error("could not finalize project file");}catch(...){std::error_code ec;std::filesystem::remove(tmp,ec);throw;}}
 Document Document::load(const std::string& path){std::ifstream i(std::filesystem::u8path(path),std::ios::binary);if(!i)throw std::runtime_error("cannot open project file");char magic[8];read_bytes(i,magic,sizeof(magic));if(std::memcmp(magic,kMagic,sizeof(magic))!=0)throw std::runtime_error("not a PTDOC v1 project");uint32_t w=read_le<uint32_t>(i),h=read_le<uint32_t>(i);Document d(w,h,read_string(i));uint32_t count=read_le<uint32_t>(i);if(count>kMaxLayers)throw std::runtime_error("project has too many layers");for(uint32_t n=0;n<count;++n){std::string name=read_string(i);int32_t x=read_le<int32_t>(i),y=read_le<int32_t>(i);uint8_t opacity=read_le<uint8_t>(i),visible=read_le<uint8_t>(i),blend=read_le<uint8_t>(i);(void)read_le<uint8_t>(i);uint32_t lw=read_le<uint32_t>(i),lh=read_le<uint32_t>(i);if(!lw||!lh||static_cast<uint64_t>(lw)*lh>100000000ULL||blend>static_cast<uint8_t>(BlendMode::Subtract)||visible>1)throw std::runtime_error("invalid layer metadata");Image image(lw,lh);for(auto& p:image.mutable_pixels()){p.r=read_le<uint8_t>(i);p.g=read_le<uint8_t>(i);p.b=read_le<uint8_t>(i);p.a=read_le<uint8_t>(i);}Layer layer(std::move(name),std::move(image));layer.x=x;layer.y=y;layer.opacity=opacity;layer.visible=visible!=0;layer.blend=static_cast<BlendMode>(blend);d.add_layer(std::move(layer));}char extra;if(i.read(&extra,1))throw std::runtime_error("unexpected trailing data in project");return d;}
 Document::State Document::snapshot(std::string label)const{return {std::move(label),width_,height_,name_,layers_};}
