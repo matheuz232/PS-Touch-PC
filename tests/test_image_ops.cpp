@@ -29,5 +29,11 @@ int main(){
  pstouch::Image autoC(2,1,{20,50,100,64});autoC.at(1,0)={220,150,200,128};pstouch::auto_contrast(autoC);assert(autoC.at(0,0).r==0&&autoC.at(1,0).r==255&&autoC.at(0,0).g==0&&autoC.at(1,0).g==255&&autoC.at(0,0).a==64&&autoC.at(1,0).a==128);
  bad=false;try{pstouch::adjust_levels(levels,128,128);}catch(const std::invalid_argument&){bad=true;}assert(bad);
 
+
+ pstouch::Image tones(2,1,{30,60,90,51});tones.at(1,0)={220,180,140,201};pstouch::adjust_shadows_highlights(tones,0.5f,-0.5f);assert(tones.at(0,0).r>30&&tones.at(1,0).r<220&&tones.at(0,0).a==51&&tones.at(1,0).a==201);
+ pstouch::Image balance(1,1,{100,100,100,87});pstouch::color_balance(balance,1.0f,0.0f,-1.0f);assert(balance.at(0,0).r==200&&balance.at(0,0).g==100&&balance.at(0,0).b==50&&balance.at(0,0).a==87);
+ bad=false;try{pstouch::adjust_shadows_highlights(tones,2.0f,0.0f);}catch(const std::invalid_argument&){bad=true;}assert(bad);
+ bad=false;try{pstouch::color_balance(balance,0.0f,NAN,0.0f);}catch(const std::invalid_argument&){bad=true;}assert(bad);
+
  std::cout<<"PASS: transforms, color filters, 100% core ops, blur, sharpen, edges, gamma, temperature, vignette and pixelation\\n";
 }
