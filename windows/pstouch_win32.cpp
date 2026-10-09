@@ -189,11 +189,12 @@ void apply_photo_filter_command(UINT command) {
  }
  auto& image=g_document->mutable_layers()[g_selected_layer].image;
  try {
+  // Capture the pre-edit state before any pixels are changed so Undo restores
+  // the actual original layer rather than a duplicate of the filtered result.
+  g_document->checkpoint("Apply image filter");
   if(command>=2000 && command<2100) {
    const auto preset=static_cast<pstouch::PhotoPreset>(command-2000);
    pstouch::apply_photo_preset(image,preset);
-   const auto name=pstouch::photo_preset_name(preset);
-   g_document->checkpoint(("Photo preset: "+name).c_str());
   } else {
    switch(command) {
     case 1001: pstouch::invert_colors(image); break;
@@ -283,7 +284,6 @@ void apply_photo_filter_command(UINT command) {
     }
     default: return;
    }
-   g_document->checkpoint("Apply image filter");
   }
   render_document();
  } catch(const std::exception&) {
