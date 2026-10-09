@@ -8,6 +8,7 @@
 #include "pstouch/image.hpp"
 #include "pstouch/document.hpp"
 #include "pstouch/psd.hpp"
+#include "pstouch/photo_filters.hpp"
 #include <string>
 #include <memory>
 #include <algorithm>
@@ -181,6 +182,68 @@ void apply_tone(bool use_sepia){
  if(use_sepia)pstouch::sepia(image);else pstouch::grayscale(image);
  g_document->checkpoint(use_sepia?"Sepia layer":"Grayscale layer"); render_document();
 }
+void apply_photo_filter_command(UINT command) {
+ if(!g_document || g_document->layers().empty()) {
+  MessageBoxW(g_hwnd,L"Abra uma imagem antes de aplicar um filtro.",L"PS Touch PC",MB_OK|MB_ICONINFORMATION);
+  return;
+ }
+ auto& image=g_document->mutable_layers()[g_selected_layer].image;
+ try {
+  if(command>=2000 && command<2100) {
+   const auto preset=static_cast<pstouch::PhotoPreset>(command-2000);
+   pstouch::apply_photo_preset(image,preset);
+   const auto name=pstouch::photo_preset_name(preset);
+   g_document->checkpoint(("Photo preset: "+name).c_str());
+  } else {
+   switch(command) {
+    case 1001: pstouch::invert_colors(image); break;
+    case 1002: pstouch::posterize(image,6); break;
+    case 1003: pstouch::gaussian_blur(image,1.5f); break;
+    case 1004: pstouch::sharpen(image,1.0f); break;
+    case 1005: pstouch::edge_detect(image); break;
+    case 1006: pstouch::adjust_gamma(image,1.15f); break;
+    case 1007: pstouch::adjust_temperature(image,0.18f); break;
+    case 1008: pstouch::vignette(image,0.35f); break;
+    case 1009: pstouch::pixelate(image,8); break;
+    case 1010: pstouch::threshold(image,128); break;
+    default: return;
+   }
+   g_document->checkpoint("Apply image filter");
+  }
+  render_document();
+ } catch(const std::exception&) {
+  MessageBoxW(g_hwnd,L"O filtro não pôde ser aplicado. Verifique o tamanho da imagem e os parâmetros.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
+ }
+}
+void show_filter_menu(HWND hwnd,int x,int y) {
+ HMENU menu=CreatePopupMenu();
+ if(!menu) return;
+ const wchar_t* families[]={L"Natural",L"Quente",L"Frio",L"Vintage",L"Cinema",L"Desbotado",L"Vivo",L"Matte",L"Teal & Orange",L"Monocromático"};
+ for(UINT family=0;family<10;family++) {
+  HMENU submenu=CreatePopupMenu();
+  if(!submenu) continue;
+  for(UINT strength=0;strength<10;strength++) {
+   wchar_t label_text[64]{};
+   swprintf_s(label_text,L"%s %02u",families[family],strength+1);
+   AppendMenuW(submenu,MF_STRING,2000+family*10+strength,label_text);
+  }
+  AppendMenuW(menu,MF_POPUP,(UINT_PTR)submenu,families[family]);
+ }
+ AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
+ AppendMenuW(menu,MF_STRING,1001,L"Inverter cores");
+ AppendMenuW(menu,MF_STRING,1002,L"Posterizar (6 níveis)");
+ AppendMenuW(menu,MF_STRING,1003,L"Desfoque gaussiano");
+ AppendMenuW(menu,MF_STRING,1004,L"Nitidez");
+ AppendMenuW(menu,MF_STRING,1005,L"Detectar bordas");
+ AppendMenuW(menu,MF_STRING,1006,L"Corrigir gama");
+ AppendMenuW(menu,MF_STRING,1007,L"Temperatura quente");
+ AppendMenuW(menu,MF_STRING,1008,L"Vinheta");
+ AppendMenuW(menu,MF_STRING,1009,L"Pixelizar");
+ AppendMenuW(menu,MF_STRING,1010,L"Preto e branco (limiar)");
+ const UINT selected=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,x,y,0,hwnd,nullptr);
+ if(selected) apply_photo_filter_command(selected);
+ DestroyMenu(menu);
+}
 std::string wide_to_utf8(const std::wstring& value) {
  if(value.empty()) return {};
  const int bytes=WideCharToMultiByte(CP_UTF8,0,value.data(),(int)value.size(),nullptr,0,nullptr,nullptr);
@@ -319,7 +382,7 @@ void draw_ui(HDC dc, RECT c) {
  int w=c.right,h=c.bottom; fill(dc,c,BG);
  // Top menu and command bar remain fixed-height; content below is fully responsive.
  fill(dc,{0,0,w,34},PANEL2); label(dc,14,8,L"PS Touch",RGB(245,245,245),16,true); label(dc,110,10,L"Arquivo   Editar   Imagem   Camada   Selecionar   Filtro   Exibir   |   F3 Ferramentas   F4 Camadas",TEXT,13);
- fill(dc,{0,34,w,76},PANEL); button(dc,{12,43,86,67},L"Abrir",true); button(dc,{94,43,168,67},L"Salvar"); button(dc,{176,43,252,67},L"Desfazer"); button(dc,{260,43,338,67},L"Refazer"); button(dc,{346,43,430,67},L"Cinza"); button(dc,{438,43,522,67},L"Sépia"); button(dc,{530,43,614,67},L"Mockup",g_mockup_design!=nullptr); if(g_mockup_design){button(dc,{622,43,704,67},L"Aplicar",true);button(dc,{712,43,794,67},L"Cancelar");label(dc,804,49,L"Setas mover · +/- tamanho · Enter aplicar",MUTED,11);}else{button(dc,{622,43,696,67},L"Girar ↶");button(dc,{702,43,776,67},L"Girar ↷");button(dc,{782,43,856,67},L"Esp. H");button(dc,{862,43,936,67},L"Esp. V");}button(dc,{944,43,1020,67},L"Abrir proj.");button(dc,{1026,43,1104,67},L"Salvar proj.");label(dc,std::max(1110,w-150),49,L"Adaptável",MUTED,12);
+ fill(dc,{0,34,w,76},PANEL); button(dc,{12,43,86,67},L"Abrir",true); button(dc,{94,43,168,67},L"Salvar"); button(dc,{176,43,252,67},L"Desfazer"); button(dc,{260,43,338,67},L"Refazer"); button(dc,{346,43,430,67},L"Cinza"); button(dc,{438,43,522,67},L"Sépia"); button(dc,{530,43,614,67},L"Mockup",g_mockup_design!=nullptr); if(g_mockup_design){button(dc,{622,43,704,67},L"Aplicar",true);button(dc,{712,43,794,67},L"Cancelar");label(dc,804,49,L"Setas mover · +/- tamanho · Enter aplicar",MUTED,11);}else{button(dc,{622,43,696,67},L"Girar ↶");button(dc,{702,43,776,67},L"Girar ↷");button(dc,{782,43,856,67},L"Esp. H");button(dc,{862,43,936,67},L"Esp. V");}button(dc,{944,43,1020,67},L"Abrir proj.");button(dc,{1026,43,1104,67},L"Salvar proj.");button(dc,{1112,43,1190,67},L"Filtros"); label(dc,std::max(1196,w-70),49,L"UI",MUTED,12);
  const int top=76,bottom=26; fill(dc,{0,h-bottom,w,h},PANEL2); label(dc,12,h-bottom+6,g_text_capturing?L"Enter: nova linha · Ctrl+Enter: confirmar · Esc: cancelar":(g_text_mode?L"Ferramenta Texto ativa · clique na imagem":g_path),MUTED,11); label(dc,std::max(250,w-250),h-bottom+6,L"Fontes detectadas: "+std::to_wstring(g_loaded_font_paths.size()),MUTED,11);
  int usableH=std::max(0,h-top-bottom); bool compact=w<860; bool tiny=w<570; int left=g_showTools?(tiny?0:(compact?44:190)):0; int right=g_showLayers?(tiny?0:(compact?0:230)):0; if(w-left-right<160){right=0;left= g_showTools?36:0;}
  if(left>0){fill(dc,{0,top,left,h-bottom},PANEL2); if(left>50){label(dc,14,top+14,L"Ferramentas",TEXT,13,true); const wchar_t* tools[]={L"Mover",L"Seleção",L"Laço",L"Pincel",L"Borracha",L"Preenchimento",L"Texto",L"Cortar",L"Conta-gotas",L"Mão"}; for(int i=0;i<10;i++){int yy=top+44+i*35; RECT r{10,yy,left-10,yy+28}; button(dc,r,tools[i],i==g_active_tool);} } else {for(int i=0;i<8;i++){int yy=top+12+i*42; RECT r{7,yy,left-7,yy+30}; fill(dc,r,i==g_active_tool?ACCENT:PANEL); label(dc,14,yy+7,std::to_wstring(i+1),TEXT,13,true);}} }
@@ -381,6 +444,6 @@ LRESULT CALLBACK wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){switch(msg){cas
   if(y>=bar_y-5&&y<=bar_y+10){int range=std::max(1,client_w-230-28);int value=std::clamp((x-(rx+14))*255/range,0,255);g_document->set_layer_opacity(g_selected_layer,(uint8_t)value);g_document->checkpoint("Change layer opacity");render_document();return 0;}
  }
 }
-if(y>=43&&y<=67&&x>=944&&x<=1020)open_project();else if(y>=43&&y<=67&&x>=1026&&x<=1104)save_project();else if(y>=43&&y<=67&&x>=12&&x<=86)open_image();else if(y>=43&&y<=67&&x>=94&&x<=168)save_image();else if(y>=43&&y<=67&&x>=176&&x<=252)undo_image();else if(y>=43&&y<=67&&x>=260&&x<=338)redo_image();else if(y>=43&&y<=67&&x>=346&&x<=430)apply_tone(false);else if(y>=43&&y<=67&&x>=438&&x<=522)apply_tone(true);else if(y>=43&&y<=67&&x>=530&&x<=614)start_mockup();else if(g_mockup_design&&y>=43&&y<=67&&x>=622&&x<=704)commit_mockup();else if(g_mockup_design&&y>=43&&y<=67&&x>=712&&x<=794)cancel_mockup();else if(!g_mockup_design&&y>=43&&y<=67&&x>=622&&x<=696)rotate_image(false);else if(!g_mockup_design&&y>=43&&y<=67&&x>=702&&x<=776)rotate_image(true);else if(!g_mockup_design&&y>=43&&y<=67&&x>=782&&x<=856)flip_image(true);else if(!g_mockup_design&&y>=43&&y<=67&&x>=862&&x<=936)flip_image(false);return 0;}case WM_MOUSEWHEEL:{short d=GET_WHEEL_DELTA_WPARAM(wp);if(g_mockup_design)g_mockup_scale=std::clamp(g_mockup_scale+(d>0?0.03f:-0.03f),0.05f,1.5f);else g_zoom=std::clamp(g_zoom+(d>0?0.1f:-0.1f),0.1f,4.0f);InvalidateRect(hwnd,nullptr,FALSE);return 0;}case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT r;GetClientRect(hwnd,&r);draw_ui(dc,r);EndPaint(hwnd,&ps);return 0;}case WM_DESTROY:unload_custom_fonts();PostQuitMessage(0);return 0;}return DefWindowProcW(hwnd,msg,wp,lp);}
+if(y>=43&&y<=67&&x>=1112&&x<=1190){POINT p{x,y+24};ClientToScreen(hwnd,&p);show_filter_menu(hwnd,p.x,p.y);}else if(y>=43&&y<=67&&x>=944&&x<=1020)open_project();else if(y>=43&&y<=67&&x>=1026&&x<=1104)save_project();else if(y>=43&&y<=67&&x>=12&&x<=86)open_image();else if(y>=43&&y<=67&&x>=94&&x<=168)save_image();else if(y>=43&&y<=67&&x>=176&&x<=252)undo_image();else if(y>=43&&y<=67&&x>=260&&x<=338)redo_image();else if(y>=43&&y<=67&&x>=346&&x<=430)apply_tone(false);else if(y>=43&&y<=67&&x>=438&&x<=522)apply_tone(true);else if(y>=43&&y<=67&&x>=530&&x<=614)start_mockup();else if(g_mockup_design&&y>=43&&y<=67&&x>=622&&x<=704)commit_mockup();else if(g_mockup_design&&y>=43&&y<=67&&x>=712&&x<=794)cancel_mockup();else if(!g_mockup_design&&y>=43&&y<=67&&x>=622&&x<=696)rotate_image(false);else if(!g_mockup_design&&y>=43&&y<=67&&x>=702&&x<=776)rotate_image(true);else if(!g_mockup_design&&y>=43&&y<=67&&x>=782&&x<=856)flip_image(true);else if(!g_mockup_design&&y>=43&&y<=67&&x>=862&&x<=936)flip_image(false);return 0;}case WM_MOUSEWHEEL:{short d=GET_WHEEL_DELTA_WPARAM(wp);if(g_mockup_design)g_mockup_scale=std::clamp(g_mockup_scale+(d>0?0.03f:-0.03f),0.05f,1.5f);else g_zoom=std::clamp(g_zoom+(d>0?0.1f:-0.1f),0.1f,4.0f);InvalidateRect(hwnd,nullptr,FALSE);return 0;}case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT r;GetClientRect(hwnd,&r);draw_ui(dc,r);EndPaint(hwnd,&ps);return 0;}case WM_DESTROY:unload_custom_fonts();PostQuitMessage(0);return 0;}return DefWindowProcW(hwnd,msg,wp,lp);}
 }
 int WINAPI wWinMain(HINSTANCE instance,HINSTANCE, PWSTR,int show){GdiplusStartupInput gsi;if(GdiplusStartup(&g_gdiplus,&gsi,nullptr)!=Ok)return 1; load_custom_fonts(); SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2); WNDCLASSW wc{};wc.lpfnWndProc=wndproc;wc.hInstance=instance;wc.hCursor=LoadCursor(nullptr,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"PSTouchPortableWindow";wc.hIcon=LoadIcon(nullptr,IDI_APPLICATION);if(!RegisterClassW(&wc)){GdiplusShutdown(g_gdiplus);return 2;}RECT r{0,0,1280,800};AdjustWindowRect(&r,WS_OVERLAPPEDWINDOW,FALSE);g_hwnd=CreateWindowW(wc.lpszClassName,L"PS Touch PC — Portable",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,nullptr);if(!g_hwnd){GdiplusShutdown(g_gdiplus);return 3;}ShowWindow(g_hwnd,show);UpdateWindow(g_hwnd);MSG msg;while(GetMessageW(&msg,nullptr,0,0)>0){TranslateMessage(&msg);DispatchMessageW(&msg);}GdiplusShutdown(g_gdiplus);return (int)msg.wParam;}
