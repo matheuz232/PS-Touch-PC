@@ -133,11 +133,36 @@ void gaussian_blur(Image& image,float sigma){
     std::vector<float> kernel(static_cast<size_t>(radius*2+1));float sum=0.0f;
     for(int i=-radius;i<=radius;++i){const float v=std::exp(-static_cast<float>(i*i)/(2.0f*sigma*sigma));kernel[static_cast<size_t>(i+radius)]=v;sum+=v;}
     for(auto& v:kernel)v/=sum;
-    const uint32_t w=image.width(),h=image.height();std::vector<Pixel> temp(image.pixels().size());
+    const uint32_t w=image.width(),h=image.height();
+    // Store the horizontal pass as RGBA floats so premultiplied colors remain
+    // precise. Blurring straight RGB independently creates colored fringes
+    // when transparent pixels contain unrelated hidden RGB values.
+    struct BlurPixel { float r,g,b,a; };
+    std::vector<BlurPixel> temp(image.pixels().size());
     const auto& src=image.pixels();
-    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){float ch[4]={0,0,0,0};for(int k=-radius;k<=radius;++k){const auto xx=static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(x)+k,0,static_cast<int64_t>(w)-1));const auto& p=src[static_cast<size_t>(y)*w+xx];const float weight=kernel[static_cast<size_t>(k+radius)];ch[0]+=p.r*weight;ch[1]+=p.g*weight;ch[2]+=p.b*weight;ch[3]+=p.a*weight;}temp[static_cast<size_t>(y)*w+x]={clamp_byte(ch[0]),clamp_byte(ch[1]),clamp_byte(ch[2]),clamp_byte(ch[3])};}
+    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){
+        float ch[4]={0,0,0,0};
+        for(int k=-radius;k<=radius;++k){
+            const auto xx=static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(x)+k,0,static_cast<int64_t>(w)-1));
+            const auto& p=src[static_cast<size_t>(y)*w+xx];
+            const float weight=kernel[static_cast<size_t>(k+radius)],alpha=p.a/255.0f;
+            ch[0]+=p.r*alpha*weight;ch[1]+=p.g*alpha*weight;ch[2]+=p.b*alpha*weight;ch[3]+=p.a*weight;
+        }
+        temp[static_cast<size_t>(y)*w+x]={ch[0],ch[1],ch[2],ch[3]};
+    }
     auto& dst=image.mutable_pixels();
-    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){float ch[4]={0,0,0,0};for(int k=-radius;k<=radius;++k){const auto yy=static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(y)+k,0,static_cast<int64_t>(h)-1));const auto& p=temp[static_cast<size_t>(yy)*w+x];const float weight=kernel[static_cast<size_t>(k+radius)];ch[0]+=p.r*weight;ch[1]+=p.g*weight;ch[2]+=p.b*weight;ch[3]+=p.a*weight;}dst[static_cast<size_t>(y)*w+x]={clamp_byte(ch[0]),clamp_byte(ch[1]),clamp_byte(ch[2]),clamp_byte(ch[3])};}
+    for(uint32_t y=0;y<h;++y)for(uint32_t x=0;x<w;++x){
+        float ch[4]={0,0,0,0};
+        for(int k=-radius;k<=radius;++k){
+            const auto yy=static_cast<uint32_t>(std::clamp<int64_t>(static_cast<int64_t>(y)+k,0,static_cast<int64_t>(h)-1));
+            const auto& p=temp[static_cast<size_t>(yy)*w+x];
+            const float weight=kernel[static_cast<size_t>(k+radius)];
+            ch[0]+=p.r*weight;ch[1]+=p.g*weight;ch[2]+=p.b*weight;ch[3]+=p.a*weight;
+        }
+        const float alpha=ch[3];
+        if(alpha<=0.0f){dst[static_cast<size_t>(y)*w+x]={0,0,0,0};continue;}
+        dst[static_cast<size_t>(y)*w+x]={clamp_byte(ch[0]*255.0f/alpha),clamp_byte(ch[1]*255.0f/alpha),clamp_byte(ch[2]*255.0f/alpha),clamp_byte(alpha)};
+    }
 }
 void sharpen(Image& image,float amount){
     if(!std::isfinite(amount)||amount<0.0f||amount>5.0f)throw std::invalid_argument("sharpen amount must be in [0, 5]");
