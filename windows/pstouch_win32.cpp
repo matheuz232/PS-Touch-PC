@@ -290,9 +290,10 @@ void apply_photo_filter_command(UINT command) {
    if(g_document->undo()) render_document(); else MessageBoxW(g_hwnd,L"O histórico não contém uma cópia anterior suficiente para cancelar este filtro. O resultado foi mantido.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
   }
  } catch(const std::exception&) {
-  // The checkpoint is created before mutation, so Undo can recover the layer
-  // if the user rejects a partially applied operation after an exception.
-  MessageBoxW(g_hwnd,L"O filtro não pôde ser aplicado. Verifique o tamanho da imagem e os parâmetros.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
+  // The document history stores snapshots after completed edits. A failed
+  // operation can still have partially changed pixels before throwing.
+  render_document();
+  MessageBoxW(g_hwnd,L"O filtro não pôde ser concluído. Confira a camada antes de continuar; uma alteração parcial pode ter ocorrido.",L"PS Touch PC",MB_OK|MB_ICONWARNING);
  }
 }
 void show_filter_menu(HWND hwnd,int x,int y) {
