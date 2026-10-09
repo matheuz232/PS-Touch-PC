@@ -33,4 +33,13 @@ void sepia(Image& image);
 void adjust_saturation(Image& image, float amount); // -1 removes saturation, +1 doubles it
 void invert_colors(Image& image);
 void posterize(Image& image, uint16_t levels); // 2..256 tonal levels per RGB channel
+
+void gaussian_blur(Image& image, float sigma);
+void sharpen(Image& image, float amount);
+void edge_detect(Image& image);
+void threshold(Image& image, uint8_t cutoff = 128);
+void adjust_gamma(Image& image, float gamma);
+void adjust_temperature(Image& image, float amount); // -1 cool, +1 warm
+void vignette(Image& image, float amount); // 0..1
+void pixelate(Image& image, uint32_t block_size);
 }
