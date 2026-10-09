@@ -252,7 +252,7 @@ void open_image() {
     if(!bitmap||!initialize_document_from_bitmap(*bitmap,"PSD (flattened)"))throw std::runtime_error("PSD conversion failed");
     g_image=std::move(bitmap);g_path=path;g_zoom=1.0f;g_undo.clear();g_redo.clear();
    } catch(const std::exception&) {
-    MessageBoxW(g_hwnd,L"Não foi possível abrir este PSD. A importação em camadas exige canais raw; a alternativa achatada aceita PSD RGB de 8 bits com dados raw ou RLE.",L"PS Touch PC",MB_OK|MB_ICONERROR);
+    MessageBoxW(g_hwnd,L"Não foi possível abrir este PSD. A importação em camadas aceita canais raw ou PackBits RLE; a alternativa achatada aceita PSD RGB de 8 bits com dados raw ou RLE.",L"PS Touch PC",MB_OK|MB_ICONERROR);
    }
   }
   InvalidateRect(g_hwnd,nullptr,TRUE);return;
