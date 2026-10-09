@@ -218,6 +218,9 @@ void apply_photo_filter_command(UINT command) {
      if(command>=1100 && command<=1107) {
       constexpr float strengths[]={-1.0f,-0.75f,-0.5f,-0.25f,0.25f,0.5f,0.75f,1.0f};
       pstouch::adjust_vibrance(image,strengths[command-1100]);
+     } else if(command>=1110 && command<=1115) {
+      constexpr float stops[]={-2.0f,-1.0f,-0.5f,0.5f,1.0f,2.0f};
+      pstouch::adjust_exposure(image,stops[command-1110]);
      } else return;
      break;
     default: return;
