@@ -210,6 +210,8 @@ void apply_photo_filter_command(UINT command) {
     case 1012: pstouch::adjust_hue(image,30.0f); break;
     case 1013: pstouch::adjust_levels(image,12,243,1.0f); break;
     case 1014: pstouch::auto_contrast(image); break;
+    case 1015: pstouch::adjust_shadows_highlights(image,0.35f,-0.15f); break;
+    case 1016: pstouch::color_balance(image,0.12f,0.0f,-0.12f); break;
     default: return;
    }
    g_document->checkpoint("Apply image filter");
@@ -248,6 +250,8 @@ void show_filter_menu(HWND hwnd,int x,int y) {
  AppendMenuW(menu,MF_STRING,1012,L"Matiz +30°");
  AppendMenuW(menu,MF_STRING,1013,L"Níveis (predefinição)");
  AppendMenuW(menu,MF_STRING,1014,L"Contraste automático");
+ AppendMenuW(menu,MF_STRING,1015,L"Abrir sombras / reduzir realces");
+ AppendMenuW(menu,MF_STRING,1016,L"Equilíbrio de cores (frio/quente)");
  const UINT selected=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,x,y,0,hwnd,nullptr);
  if(selected) apply_photo_filter_command(selected);
  DestroyMenu(menu);
