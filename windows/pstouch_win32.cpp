@@ -510,7 +510,7 @@ void commit_mockup(){
  Graphics gr(design.get());gr.Clear(Color(0,0,0,0));gr.SetCompositingMode(CompositingModeSourceOver);gr.SetInterpolationMode(InterpolationModeHighQualityBicubic);
  if(gr.DrawImage(g_mockup_design.get(),Rect(x,y,ow,oh))!=Ok){MessageBoxW(g_hwnd,L"Falha ao compor o mockup.",L"PS Touch PC",MB_OK|MB_ICONERROR);return;}
  auto pixels=to_core_image(*design);if(!pixels)return;
- try{g_selected_layer=g_document->add_layer(pstouch::Layer("Mockup artwork",std::move(*pixels)));g_document->checkpoint("Place mockup artwork");g_mockup_design.reset();render_document();}
+ try{g_document->checkpoint("Place mockup artwork");g_selected_layer=g_document->add_layer(pstouch::Layer("Mockup artwork",std::move(*pixels)));g_mockup_design.reset();render_document();}
  catch(...){MessageBoxW(g_hwnd,L"Não foi possível criar a camada do mockup.",L"PS Touch PC",MB_OK|MB_ICONERROR);}
 }
 
@@ -541,7 +541,7 @@ void commit_text() {
  PointF origin((REAL)g_text_image_x,(REAL)g_text_image_y);
  if(gr.DrawString(g_text_input.c_str(),(INT)g_text_input.size(),&text_font,origin,&brush)!=Ok){g_text_capturing=false;g_text_input.clear();return;}
  auto pixels=to_core_image(*text_layer);
- if(pixels&&g_document){try{g_selected_layer=g_document->add_layer(pstouch::Layer("Text",std::move(*pixels)));g_document->checkpoint("Add text layer");render_document();}catch(...){MessageBoxW(g_hwnd,L"Não foi possível criar a camada de texto.",L"PS Touch PC",MB_OK|MB_ICONERROR);}}
+ if(pixels&&g_document){try{g_document->checkpoint("Add text layer");g_selected_layer=g_document->add_layer(pstouch::Layer("Text",std::move(*pixels)));render_document();}catch(...){MessageBoxW(g_hwnd,L"Não foi possível criar a camada de texto.",L"PS Touch PC",MB_OK|MB_ICONERROR);}}
  g_text_capturing=false; g_text_mode=false; g_text_input.clear(); InvalidateRect(g_hwnd,nullptr,FALSE);
 }
 void draw_ui(HDC dc, RECT c) {
@@ -607,7 +607,7 @@ LRESULT CALLBACK wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){switch(msg){cas
   int row_y=76+130;
   for(size_t i=g_document->layers().size();i>0;--i){size_t idx=i-1;int yy=row_y+(int)(g_document->layers().size()-i)*34;if(yy+30>=client.bottom-26-8)break;if(y>=yy&&y<yy+30){g_selected_layer=idx;InvalidateRect(hwnd,nullptr,FALSE);return 0;}}
   int bar_y=client.bottom-26-54;
-  if(y>=bar_y-5&&y<=bar_y+10){int range=std::max(1,client_w-230-28);int value=std::clamp((x-(rx+14))*255/range,0,255);g_document->set_layer_opacity(g_selected_layer,(uint8_t)value);g_document->checkpoint("Change layer opacity");render_document();return 0;}
+  if(y>=bar_y-5&&y<=bar_y+10){int range=std::max(1,client_w-230-28);int value=std::clamp((x-(rx+14))*255/range,0,255);g_document->checkpoint("Change layer opacity");g_document->set_layer_opacity(g_selected_layer,(uint8_t)value);render_document();return 0;}
  }
 }
 if(y>=43&&y<=67&&x>=1112&&x<=1190){POINT p{x,y+24};ClientToScreen(hwnd,&p);show_filter_menu(hwnd,p.x,p.y);}else if(y>=43&&y<=67&&x>=944&&x<=1020)open_project();else if(y>=43&&y<=67&&x>=1026&&x<=1104)save_project();else if(y>=43&&y<=67&&x>=12&&x<=86)open_image();else if(y>=43&&y<=67&&x>=94&&x<=168)save_image();else if(y>=43&&y<=67&&x>=176&&x<=252)undo_image();else if(y>=43&&y<=67&&x>=260&&x<=338)redo_image();else if(y>=43&&y<=67&&x>=346&&x<=430)apply_tone(false);else if(y>=43&&y<=67&&x>=438&&x<=522)apply_tone(true);else if(y>=43&&y<=67&&x>=530&&x<=614)start_mockup();else if(g_mockup_design&&y>=43&&y<=67&&x>=622&&x<=704)commit_mockup();else if(g_mockup_design&&y>=43&&y<=67&&x>=712&&x<=794)cancel_mockup();else if(!g_mockup_design&&y>=43&&y<=67&&x>=622&&x<=696)rotate_image(false);else if(!g_mockup_design&&y>=43&&y<=67&&x>=702&&x<=776)rotate_image(true);else if(!g_mockup_design&&y>=43&&y<=67&&x>=782&&x<=856)flip_image(true);else if(!g_mockup_design&&y>=43&&y<=67&&x>=862&&x<=936)flip_image(false);return 0;}case WM_MOUSEWHEEL:{short d=GET_WHEEL_DELTA_WPARAM(wp);if(g_mockup_design)g_mockup_scale=std::clamp(g_mockup_scale+(d>0?0.03f:-0.03f),0.05f,1.5f);else g_zoom=std::clamp(g_zoom+(d>0?0.1f:-0.1f),0.1f,4.0f);InvalidateRect(hwnd,nullptr,FALSE);return 0;}case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT r;GetClientRect(hwnd,&r);draw_ui(dc,r);EndPaint(hwnd,&ps);return 0;}case WM_DESTROY:unload_custom_fonts();PostQuitMessage(0);return 0;}return DefWindowProcW(hwnd,msg,wp,lp);}
