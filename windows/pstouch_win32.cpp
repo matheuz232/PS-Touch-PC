@@ -552,6 +552,40 @@ bool choose_text_style() {
  g_text_color=cf.rgbColors;
  return true;
 }
+bool edit_selected_text_layer() {
+ if(!g_document || !g_image || g_selected_layer>=g_document->layers().size()) return false;
+ const auto& layer=g_document->layers()[g_selected_layer];
+ if(!layer.text) return false;
+ const auto metadata=*layer.text;
+ g_text_input=utf8_to_wide(metadata.text);
+ g_text_image_x=std::clamp(metadata.origin_x,0,(int)g_document->width()-1);
+ g_text_image_y=std::clamp(metadata.origin_y,0,(int)g_document->height()-1);
+ g_text_logfont={};
+ g_text_logfont.lfHeight=-static_cast<LONG>(std::clamp(metadata.pixel_size,1U,512U));
+ g_text_logfont.lfWeight=metadata.bold?FW_BOLD:FW_NORMAL;
+ g_text_logfont.lfItalic=metadata.italic?TRUE:FALSE;
+ g_text_logfont.lfUnderline=metadata.underline?TRUE:FALSE;
+ g_text_logfont.lfStrikeOut=metadata.strikeout?TRUE:FALSE;
+ auto family=utf8_to_wide(metadata.font_family);
+ if(family.empty()) family=L"Arial";
+ wcsncpy_s(g_text_logfont.lfFaceName,LF_FACESIZE,family.c_str(),_TRUNCATE);
+ g_text_color=RGB((metadata.color_rgb>>16U)&0xFFU,(metadata.color_rgb>>8U)&0xFFU,metadata.color_rgb&0xFFU);
+ if(!choose_text_style()) { g_text_input.clear(); return false; }
+ RECT client{}; GetClientRect(g_hwnd,&client);
+ const int w=client.right,h=client.bottom,top=76,bottom=26;
+ const bool compact=w<860,tiny=w<570;
+ int left=g_showTools?(tiny?0:(compact?44:190)):0;
+ int right=g_showLayers?(tiny?0:(compact?0:230)):0;
+ if(w-left-right<160){right=0;left=g_showTools?36:0;}
+ const int cw=std::max(0,w-left-right),usableH=std::max(0,h-top-bottom);
+ const double scale=std::max(0.01,std::min(8.0,std::min((double)std::max(1,cw-48)/g_image->GetWidth(),(double)std::max(1,usableH-48)/g_image->GetHeight())*g_zoom));
+ const int iw=(int)(g_image->GetWidth()*scale),ih=(int)(g_image->GetHeight()*scale);
+ const int ix=left+(cw-iw)/2,iy=top+(usableH-ih)/2;
+ g_text_screen_x=ix+(int)(g_text_image_x*scale);
+ g_text_screen_y=iy+(int)(g_text_image_y*scale);
+ g_text_mode=true;g_text_capturing=true;g_editing_text_layer=true;g_active_tool=6;
+ SetFocus(g_hwnd);InvalidateRect(g_hwnd,nullptr,FALSE);return true;
+}
 void commit_text() {
  if(!g_image || g_text_input.empty()) { g_text_capturing=false; g_text_input.clear(); InvalidateRect(g_hwnd,nullptr,FALSE); return; }
  auto family=std::make_unique<FontFamily>(g_text_logfont.lfFaceName,&g_private_fonts);
@@ -632,7 +666,7 @@ void draw_ui(HDC dc, RECT c) {
 }
 LRESULT CALLBACK wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){switch(msg){case WM_SIZE:InvalidateRect(hwnd,nullptr,FALSE);return 0;case WM_KEYDOWN:if(g_text_capturing){if(wp==VK_RETURN){if(GetKeyState(VK_CONTROL)&0x8000)commit_text();else if(g_text_input.size()<2048)g_text_input.push_back(L"\n"[0]);InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp==VK_ESCAPE){g_text_capturing=false;g_text_input.clear();InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp==VK_BACK){if(!g_text_input.empty()){if(g_text_input.size()>=2&&g_text_input[g_text_input.size()-1]>=0xDC00&&g_text_input[g_text_input.size()-1]<=0xDFFF&&g_text_input[g_text_input.size()-2]>=0xD800&&g_text_input[g_text_input.size()-2]<=0xDBFF)g_text_input.resize(g_text_input.size()-2);else g_text_input.pop_back();}InvalidateRect(hwnd,nullptr,FALSE);return 0;}return 0;}if(g_mockup_design){if(wp==VK_ESCAPE){cancel_mockup();return 0;}if(wp==VK_RETURN){commit_mockup();return 0;}if(wp==VK_LEFT)g_mockup_dx-=5;if(wp==VK_RIGHT)g_mockup_dx+=5;if(wp==VK_UP)g_mockup_dy-=5;if(wp==VK_DOWN)g_mockup_dy+=5;if(wp==VK_ADD||wp==VK_OEM_PLUS)g_mockup_scale=std::min(1.5f,g_mockup_scale+0.03f);if(wp==VK_SUBTRACT||wp==VK_OEM_MINUS)g_mockup_scale=std::max(0.05f,g_mockup_scale-0.03f);InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp==VK_F4){g_showLayers=!g_showLayers;InvalidateRect(hwnd,nullptr,TRUE);return 0;}if(wp==VK_F3){g_showTools=!g_showTools;InvalidateRect(hwnd,nullptr,TRUE);return 0;}if(wp=='O' && (GetKeyState(VK_CONTROL)&0x8000)){if(GetKeyState(VK_SHIFT)&0x8000)open_project();else open_image();return 0;}if(wp==VK_ESCAPE){g_zoom=1.0f;InvalidateRect(hwnd,nullptr,FALSE);return 0;}if(wp=='Z'&&(GetKeyState(VK_CONTROL)&0x8000)){undo_image();return 0;}if(wp=='Y'&&(GetKeyState(VK_CONTROL)&0x8000)){redo_image();return 0;}if(wp=='S'&&(GetKeyState(VK_CONTROL)&0x8000)){if(GetKeyState(VK_SHIFT)&0x8000)save_project();else save_image();return 0;}return 0;case WM_CHAR:if(g_text_capturing){if(wp>=32 && wp!=127 && g_text_input.size()<2048)g_text_input.push_back((wchar_t)wp);InvalidateRect(hwnd,nullptr,FALSE);return 0;}break;case WM_LBUTTONUP:{int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);{RECT client{};GetClientRect(hwnd,&client);int client_w=client.right;bool compact=client_w<860,tiny=client_w<570;int tool_panel_w=g_showTools?(tiny?0:(compact?44:190)):0;int right_panel_w=g_showLayers?(tiny?0:(compact?0:230)):0;if(client_w-tool_panel_w-right_panel_w<160){right_panel_w=0;tool_panel_w=g_showTools?36:0;}int tool=-1;if(tool_panel_w>50&&x>=10&&x<tool_panel_w-10){for(int i=0;i<10;i++){int yy=76+44+i*35;if(y>=yy&&y<yy+28){tool=i;break;}}}else if(tool_panel_w>0&&tool_panel_w<=50&&x>=7&&x<tool_panel_w-7){for(int i=0;i<8;i++){int yy=76+12+i*42;if(y>=yy&&y<yy+30){tool=i;break;}}}if(tool>=0){g_active_tool=tool;if(tool==6){if(!g_text_mode){if(choose_text_style())g_text_mode=true;}else g_text_mode=false;g_text_capturing=false;g_text_input.clear();}InvalidateRect(hwnd,nullptr,FALSE);return 0;}}if(g_text_mode && g_image && y>=76){RECT client{};GetClientRect(hwnd,&client);int w=client.right,h=client.bottom;int bottom=26,top=76;bool compact=w<860,tiny=w<570;int left=g_showTools?(tiny?0:(compact?44:190)):0;int right=g_showLayers?(tiny?0:(compact?0:230)):0;if(w-left-right<160){right=0;left=g_showTools?36:0;}int cw=std::max(0,w-left-right),usableH=std::max(0,h-top-bottom);if(x>=left&&x<left+cw&&cw>20&&usableH>20){double scale=std::min((double)std::max(1,cw-48)/g_image->GetWidth(),(double)std::max(1,usableH-48)/g_image->GetHeight())*g_zoom;scale=std::max(0.01,std::min(scale,8.0));int iw=(int)(g_image->GetWidth()*scale),ih=(int)(g_image->GetHeight()*scale);int ix=left+(cw-iw)/2,iy=top+(usableH-ih)/2;if(x>=ix&&x<=ix+iw&&y>=iy&&y<=iy+ih){g_text_image_x=std::clamp((int)((x-ix)/scale),0,(int)g_image->GetWidth()-1);g_text_image_y=std::clamp((int)((y-iy)/scale),0,(int)g_image->GetHeight()-1);g_text_screen_x=x;g_text_screen_y=y;g_text_input.clear();g_text_capturing=true;SetFocus(hwnd);InvalidateRect(hwnd,nullptr,FALSE);return 0;}}}RECT client{};GetClientRect(hwnd,&client);int client_w=client.right;if(g_showLayers&&x>=client_w-230&&client_w>=860&&y>=125){
  int rx=client_w-230;
- if(y>=125&&y<155&&x>=rx+8&&x<rx+230){if(x<rx+115)add_transparent_layer("Layer");else duplicate_selected_layer();return 0;}
+ if(y>=125&&y<155&&x>=rx+8&&x<rx+230){if(x<rx+115){if(g_document&&!g_document->layers().empty()&&g_selected_layer<g_document->layers().size()&&g_document->layers()[g_selected_layer].text)edit_selected_text_layer();else add_transparent_layer("Layer");}else duplicate_selected_layer();return 0;}
  if(y>=160&&y<188&&x>=rx+8&&x<rx+230){if(x<rx+115)toggle_selected_visibility();else remove_selected_layer();return 0;}
  if(g_document&&g_document->layers().size()>0){
   int row_y=76+130;
