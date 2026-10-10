@@ -83,4 +83,4 @@ int main(){pstouch::Document d(3,3);d.add_layer(pstouch::Layer("base",pstouch::I
  assert(restored.text=="Olá, mundo!" && restored.font_family=="Example Sans");
  assert(restored.pixel_size==48 && restored.color_rgb==0x12ABEF);
  assert(restored.bold && restored.italic && restored.underline && !restored.strikeout);
- std::cout<<"PASS: layer operations, compositing, history, and editable text metadata round-trip\\n";}\n
+ std::cout<<"PASS: layer operations, compositing, history, and editable text metadata round-trip\n";}
