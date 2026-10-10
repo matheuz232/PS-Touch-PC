@@ -34,13 +34,21 @@ void load_custom_fonts() {
  const auto directory=executable_directory()/L"fonts";
  std::filesystem::create_directories(directory,ec);
  if(ec || !std::filesystem::exists(directory,ec)) return;
+ bool font_resources_changed=false;
  for(std::filesystem::directory_iterator it(directory,ec),end; !ec && it!=end; it.increment(ec)) {
   if(!it->is_regular_file(ec) || ec) { ec.clear(); continue; }
   const auto extension=it->path().extension().wstring();
   if(_wcsicmp(extension.c_str(),L".ttf")!=0 && _wcsicmp(extension.c_str(),L".otf")!=0 && _wcsicmp(extension.c_str(),L".ttc")!=0) continue;
   const auto path=it->path().wstring();
-  Status private_status=g_private_fonts.AddFontFile(path.c_str());
-  if(AddFontResourceExW(path.c_str(),FR_PRIVATE,nullptr)!=0 || private_status==Ok) g_loaded_font_paths.push_back(path);
+  const Status private_status=g_private_fonts.AddFontFile(path.c_str());
+  const int gdi_count=AddFontResourceExW(path.c_str(),FR_PRIVATE,nullptr);
+  if(gdi_count!=0 || private_status==Ok) g_loaded_font_paths.push_back(path);
+  if(gdi_count!=0) font_resources_changed=true;
+ }
+ // Refresh this process's font chooser after registering private GDI fonts.
+ if(font_resources_changed) {
+  DWORD_PTR ignored=0;
+  SendMessageTimeoutW(HWND_BROADCAST,WM_FONTCHANGE,0,0,SMTO_ABORTIFHUNG,1000,&ignored);
  }
 }
 void unload_custom_fonts() {
