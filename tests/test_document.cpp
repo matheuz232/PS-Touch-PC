@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 using namespace pstouch;
 int main(){
  Document d(2,2,"Test Document"); Image bottom(2,2,{0,0,255,255}); d.add_layer(Layer("Background",bottom));
@@ -66,7 +67,7 @@ int main(){
  text_doc.add_layer(Layer("Background",Image(4,3,{0,0,0,0})));
  Layer text_layer("Editable text",Image(4,3,{0,0,0,0}));
  TextMetadata text_metadata;
- text_metadata.text=u8"Olá 🌄";
+ text_metadata.text=std::string("Ol\xC3\xA1 \xF0\x9F\x8C\x84");
  text_metadata.font_family="Arial";
  text_metadata.pixel_size=37;
  text_metadata.color_rgb=0x12ABEF;
