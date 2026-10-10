@@ -2,12 +2,21 @@
 #include "pstouch/image.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 namespace pstouch {
 enum class BlendMode : uint8_t { Normal=0, Darken=1, Multiply=2, Lighten=3, Screen=4, Add=5, Overlay=6, Difference=7, Subtract=8 };
+struct TextMetadata {
+    std::string text;
+    std::string font_family;
+    uint32_t pixel_size{32};
+    uint32_t color_rgb{0xFFFFFF}; // 0xRRGGBB
+    bool bold{false}, italic{false}, underline{false}, strikeout{false};
+};
 struct Layer {
     std::string name;
+    std::optional<TextMetadata> text;
     Image image;
     int32_t x{0}, y{0};
     uint8_t opacity{255};
