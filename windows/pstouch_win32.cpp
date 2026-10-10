@@ -572,7 +572,7 @@ void commit_text() {
  PointF origin((REAL)g_text_image_x,(REAL)g_text_image_y);
  if(gr.DrawString(g_text_input.c_str(),(INT)g_text_input.size(),&text_font,origin,&brush)!=Ok){g_text_capturing=false;g_text_input.clear();return;}
  auto pixels=to_core_image(*text_layer);
- if(pixels&&g_document){try{g_selected_layer=g_document->add_layer(pstouch::Layer("Text",std::move(*pixels)));g_document->checkpoint("Add text layer");render_document();}catch(...){MessageBoxW(g_hwnd,L"Não foi possível criar a camada de texto.",L"PS Touch PC",MB_OK|MB_ICONERROR);}}
+ if(pixels&&g_document){try{pstouch::Layer layer("Text",std::move(*pixels));pstouch::TextMetadata metadata;metadata.text=wide_to_utf8(g_text_input);metadata.font_family=wide_to_utf8(g_text_logfont.lfFaceName);metadata.pixel_size=static_cast<uint32_t>(std::clamp(std::abs(g_text_logfont.lfHeight),1L,512L));metadata.color_rgb=(static_cast<uint32_t>(GetRValue(g_text_color))<<16U)|(static_cast<uint32_t>(GetGValue(g_text_color))<<8U)|static_cast<uint32_t>(GetBValue(g_text_color));metadata.bold=g_text_logfont.lfWeight>=FW_BOLD;metadata.italic=g_text_logfont.lfItalic!=0;metadata.underline=g_text_logfont.lfUnderline!=0;metadata.strikeout=g_text_logfont.lfStrikeOut!=0;layer.text=std::move(metadata);g_selected_layer=g_document->add_layer(std::move(layer));g_document->checkpoint("Add text layer");render_document();}catch(...){MessageBoxW(g_hwnd,L"Não foi possível criar a camada de texto.",L"PS Touch PC",MB_OK|MB_ICONERROR);}}
  g_text_capturing=false; g_text_mode=false; g_text_input.clear(); InvalidateRect(g_hwnd,nullptr,FALSE);
 }
 void draw_ui(HDC dc, RECT c) {
