@@ -1,5 +1,6 @@
 #include "pstouch/document.hpp"
 #include <cassert>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <utility>
@@ -59,4 +60,27 @@ int main(){pstouch::Document d(3,3);d.add_layer(pstouch::Layer("base",pstouch::I
  transactions.checkpoint("Add paint");
  assert(transactions.undo() && transactions.layers().size()==1);
  assert(transactions.redo() && transactions.layers().size()==2);
- std::cout<<"PASS: layer operations, composite ordering/offset/visibility, history undo/redo including post-mutation checkpoints and bounds checks\n";}
+ // Text-layer properties survive the native project round trip.
+ pstouch::Document text_doc(8,8,"editable text");
+ pstouch::Layer text_layer("Greeting",pstouch::Image(2,2,{0,0,0,0}));
+ pstouch::TextMetadata text;
+ text.text="Olá, mundo!";
+ text.font_family="Example Sans";
+ text.pixel_size=48;
+ text.color_rgb=0x12ABEF;
+ text.bold=true;
+ text.italic=true;
+ text.underline=true;
+ text.strikeout=false;
+ text_layer.text=text;
+ text_doc.add_layer(std::move(text_layer));
+ const auto text_path=std::filesystem::temp_directory_path()/"pstouch-text-metadata-roundtrip.ptdoc";
+ text_doc.save(text_path.string());
+ auto text_loaded=pstouch::Document::load(text_path.string());
+ std::filesystem::remove(text_path);
+ assert(text_loaded.layers().size()==1 && text_loaded.layers()[0].text.has_value());
+ const auto& restored=*text_loaded.layers()[0].text;
+ assert(restored.text=="Olá, mundo!" && restored.font_family=="Example Sans");
+ assert(restored.pixel_size==48 && restored.color_rgb==0x12ABEF);
+ assert(restored.bold && restored.italic && restored.underline && !restored.strikeout);
+ std::cout<<"PASS: layer operations, compositing, history, and editable text metadata round-trip\\n";}\n
