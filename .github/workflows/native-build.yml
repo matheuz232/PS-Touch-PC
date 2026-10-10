@@ -72,6 +72,11 @@ jobs:
 
           Copy-Item "README.md" $stage
           Copy-Item "portable/README.txt" (Join-Path $stage "PORTABLE-README.txt")
+          # The application resolves custom fonts relative to the executable.
+          # Ship the usage note but never bundle third-party font files without licenses.
+          $fontDir = Join-Path $stage "fonts"
+          New-Item -ItemType Directory -Force -Path $fontDir | Out-Null
+          Copy-Item "fonts/README.txt" (Join-Path $fontDir "README.txt")
           @"
           PS Touch PC — Windows x64 preview build
           ========================================
