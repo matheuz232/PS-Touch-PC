@@ -11,4 +11,4 @@ O programa procura os arquivos nesta pasta e em suas subpastas ao iniciar e carr
 
 Somente use fontes que você tenha direito de utilizar. Arquivos inválidos ou incompatíveis são ignorados pelo Windows.
 
-Dica: você pode organizar os arquivos em subpastas por família, por exemplo `fonts/Display/` e `fonts/Serif/`. O carregamento prepara as fontes para a ferramenta Texto. O texto confirmado continua rasterizado para exibição, mas projetos `.ptdoc` v2 também guardam o texto original, família, tamanho, cor e estilos como metadados; a interface para editar esses metadados depois da inserção ainda está em desenvolvimento.
+Dica: você pode organizar os arquivos em subpastas por família, por exemplo `fonts/Display/` e `fonts/Serif/`. O carregamento prepara as fontes para a ferramenta Texto. O texto confirmado continua rasterizado para exibição, mas projetos `.ptdoc` v3 também guardam o texto original, família, tamanho, cor e estilos como metadados; a interface para editar esses metadados depois da inserção ainda está em desenvolvimento.
