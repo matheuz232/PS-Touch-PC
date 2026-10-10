@@ -12,6 +12,7 @@ struct TextMetadata {
     std::string font_family;
     uint32_t pixel_size{32};
     uint32_t color_rgb{0xFFFFFF}; // 0xRRGGBB
+    int32_t origin_x{0}, origin_y{0};
     bool bold{false}, italic{false}, underline{false}, strikeout{false};
 };
 struct Layer {
