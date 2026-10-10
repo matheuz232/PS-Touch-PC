@@ -54,9 +54,46 @@ jobs:
           if (!(Test-Path $exe)) { throw "Expected Windows application was not built: $exe" }
           Copy-Item $exe $stage
 
-          $vcpkgBin = Join-Path $env:VCPKG_INSTALLATION_ROOT "installed/x64-windows/bin"
+          $vcpkgBin = Join-Path $PWD "build/vcpkg_installed/x64-windows/bin"
           $runtimeDlls = Get-ChildItem $vcpkgBin -File -Filter "*.dll" |
-            Where-Object { $_.Name -match '^(libpng.*|jpeg.*|turbojpeg.*|zlib.*)[.]dll$' }
+            Where-Object { $_.Name -match '^(libpng.*|jpeg.*|turbojpeg.*|zlib.*|z)[.]dll
+          if (!$runtimeDlls -or $runtimeDlls.Count -eq 0) {
+            throw "Could not locate the PNG/JPEG/Zlib runtime DLLs in vcpkg."
+          }
+          # Windows does not search an arbitrary runtime subfolder for DLLs.
+          # Place required runtime DLLs beside the EXE so direct launch works.
+          foreach ($dll in $runtimeDlls) { Copy-Item $dll.FullName $stage }
+
+          Copy-Item "README.md" $stage
+          Copy-Item "portable/README.txt" (Join-Path $stage "PORTABLE-README.txt")
+          @"
+          PS Touch PC — Windows x64 preview build
+          ========================================
+          This is a CI preview artifact, not a 1.0 release.
+          Extract the entire folder and run PS-Touch.exe. Keep the included runtime DLLs beside the executable.
+          This package has not yet been validated on a clean Windows 10/11 machine.
+          See README.md and PORTABLE-README.txt for current limitations.
+          "@ | Set-Content -Encoding UTF8 (Join-Path $stage "START-HERE.txt")
+
+          $share = Join-Path $PWD "build/vcpkg_installed/x64-windows/share"
+          foreach ($package in @("libpng", "libjpeg-turbo", "zlib")) {
+            $copyright = Join-Path $share "$package/copyright"
+            if (Test-Path $copyright) {
+              Copy-Item $copyright (Join-Path $licenses "$package-copyright.txt")
+            }
+          }
+          if (!(Get-ChildItem $licenses -File -ErrorAction SilentlyContinue)) {
+            throw "Dependency license files were not staged."
+          }
+          Compress-Archive -Path (Join-Path $stage "*") -DestinationPath (Join-Path $env:RUNNER_TEMP "PS-Touch-PC-windows-x64-preview.zip") -Force
+      - name: Upload portable Windows preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS-Touch-PC-windows-x64-preview
+          path: ${{ runner.temp }}/PS-Touch-PC-windows-x64-preview.zip
+          if-no-files-found: error
+          retention-days: 14
+ }
           if (!$runtimeDlls -or $runtimeDlls.Count -eq 0) {
             throw "Could not locate the PNG/JPEG/Zlib runtime DLLs in vcpkg."
           }
