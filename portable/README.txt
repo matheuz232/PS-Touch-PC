@@ -5,13 +5,16 @@ Expected release layout:
   PS-Touch.exe
   *.dll          runtime DLLs beside the executable for direct Windows loading
   licenses/      third-party license notices included with the package
-  resources/     icons, UI resources, shaders and fonts with redistribution rights
+  fonts/         optional user-supplied .ttf, .otf and .ttc files; never install system-wide
+  resources/     icons, UI resources and shaders with redistribution rights
   config/        user settings stored locally beside the application
   projects/      optional user projects
   cache/         disposable local cache
   logs/          diagnostic logs
 
 The current CI preview ZIP places runtime DLLs beside PS-Touch.exe because Windows does not search arbitrary subfolders for dependencies. A future package may use a runtime subfolder only if it includes a launcher or configures DLL search safely.
+
+Custom font files are discovered directly inside the fonts/ folder beside PS-Touch.exe at startup. Only add font files you are licensed to use. Restart the application after changing this folder. The portable preview includes fonts/README.txt but intentionally does not bundle third-party fonts.
 
 The application must resolve writable paths relative to its own executable directory,
 not rely on the current working directory, registry state, or machine-wide packages.
