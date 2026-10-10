@@ -34,12 +34,19 @@ void load_custom_fonts() {
  const auto directory=executable_directory()/L"fonts";
  std::filesystem::create_directories(directory,ec);
  if(ec || !std::filesystem::exists(directory,ec)) return;
- bool font_resources_changed=false;
- for(std::filesystem::directory_iterator it(directory,ec),end; !ec && it!=end; it.increment(ec)) {
-  if(!it->is_regular_file(ec) || ec) { ec.clear(); continue; }
+ // Collect first and sort so font registration order is stable across launches.
+ std::vector<std::filesystem::path> font_files;
+ for(std::filesystem::recursive_directory_iterator it(directory,std::filesystem::directory_options::skip_permission_denied,ec),end; !ec && it!=end; it.increment(ec)) {
+  std::error_code entry_ec;
+  if(!it->is_regular_file(entry_ec) || entry_ec) continue;
   const auto extension=it->path().extension().wstring();
   if(_wcsicmp(extension.c_str(),L".ttf")!=0 && _wcsicmp(extension.c_str(),L".otf")!=0 && _wcsicmp(extension.c_str(),L".ttc")!=0) continue;
-  const auto path=it->path().wstring();
+  font_files.push_back(it->path());
+ }
+ std::sort(font_files.begin(),font_files.end());
+ bool font_resources_changed=false;
+ for(const auto& font_file:font_files) {
+  const auto path=font_file.wstring();
   const Status private_status=g_private_fonts.AddFontFile(path.c_str());
   const int gdi_count=AddFontResourceExW(path.c_str(),FR_PRIVATE,nullptr);
   if(gdi_count!=0 || private_status==Ok) g_loaded_font_paths.push_back(path);
