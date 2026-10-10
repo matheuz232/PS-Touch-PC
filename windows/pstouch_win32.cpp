@@ -34,13 +34,21 @@ void load_custom_fonts() {
  const auto directory=executable_directory()/L"fonts";
  std::filesystem::create_directories(directory,ec);
  if(ec || !std::filesystem::exists(directory,ec)) return;
+ bool font_resources_changed=false;
  for(std::filesystem::directory_iterator it(directory,ec),end; !ec && it!=end; it.increment(ec)) {
   if(!it->is_regular_file(ec) || ec) { ec.clear(); continue; }
   const auto extension=it->path().extension().wstring();
   if(_wcsicmp(extension.c_str(),L".ttf")!=0 && _wcsicmp(extension.c_str(),L".otf")!=0 && _wcsicmp(extension.c_str(),L".ttc")!=0) continue;
   const auto path=it->path().wstring();
-  Status private_status=g_private_fonts.AddFontFile(path.c_str());
-  if(AddFontResourceExW(path.c_str(),FR_PRIVATE,nullptr)!=0 || private_status==Ok) g_loaded_font_paths.push_back(path);
+  const Status private_status=g_private_fonts.AddFontFile(path.c_str());
+  const int gdi_count=AddFontResourceExW(path.c_str(),FR_PRIVATE,nullptr);
+  if(gdi_count!=0 || private_status==Ok) g_loaded_font_paths.push_back(path);
+  if(gdi_count!=0) font_resources_changed=true;
+ }
+ // Refresh this process's font chooser after registering private GDI fonts.
+ if(font_resources_changed) {
+  DWORD_PTR ignored=0;
+  SendMessageTimeoutW(HWND_BROADCAST,WM_FONTCHANGE,0,0,SMTO_ABORTIFHUNG,1000,&ignored);
  }
 }
 void unload_custom_fonts() {
@@ -565,7 +573,7 @@ void draw_ui(HDC dc, RECT c) {
  // Top menu and command bar remain fixed-height; content below is fully responsive.
  fill(dc,{0,0,w,34},PANEL2); label(dc,14,8,L"PS Touch",RGB(245,245,245),16,true); label(dc,110,10,L"Arquivo   Editar   Imagem   Camada   Selecionar   Filtro   Exibir   |   F3 Ferramentas   F4 Camadas",TEXT,13);
  fill(dc,{0,34,w,76},PANEL); button(dc,{12,43,86,67},L"Abrir",true); button(dc,{94,43,168,67},L"Salvar"); button(dc,{176,43,252,67},L"Desfazer"); button(dc,{260,43,338,67},L"Refazer"); button(dc,{346,43,430,67},L"Cinza"); button(dc,{438,43,522,67},L"Sépia"); button(dc,{530,43,614,67},L"Mockup",g_mockup_design!=nullptr); if(g_mockup_design){button(dc,{622,43,704,67},L"Aplicar",true);button(dc,{712,43,794,67},L"Cancelar");label(dc,804,49,L"Setas mover · +/- tamanho · Enter aplicar",MUTED,11);}else{button(dc,{622,43,696,67},L"Girar ↶");button(dc,{702,43,776,67},L"Girar ↷");button(dc,{782,43,856,67},L"Esp. H");button(dc,{862,43,936,67},L"Esp. V");}button(dc,{944,43,1020,67},L"Abrir proj.");button(dc,{1026,43,1104,67},L"Salvar proj.");button(dc,{1112,43,1190,67},L"Filtros"); label(dc,std::max(1196,w-70),49,L"UI",MUTED,12);
- const int top=76,bottom=26; fill(dc,{0,h-bottom,w,h},PANEL2); label(dc,12,h-bottom+6,g_text_capturing?L"Enter: nova linha · Ctrl+Enter: confirmar · Esc: cancelar":(g_text_mode?L"Ferramenta Texto ativa · clique na imagem":g_path),MUTED,11); label(dc,std::max(250,w-250),h-bottom+6,L"Fontes detectadas: "+std::to_wstring(g_loaded_font_paths.size()),MUTED,11);
+ const int top=76,bottom=26; fill(dc,{0,h-bottom,w,h},PANEL2); label(dc,12,h-bottom+6,g_text_capturing?L"Enter: nova linha · Ctrl+Enter: confirmar · Esc: cancelar":(g_text_mode?L"Ferramenta Texto ativa · clique na imagem":g_path),MUTED,11); label(dc,std::max(250,w-250),h-bottom+6,L"Arquivos de fonte carregados: "+std::to_wstring(g_loaded_font_paths.size()),MUTED,11);
  int usableH=std::max(0,h-top-bottom); bool compact=w<860; bool tiny=w<570; int left=g_showTools?(tiny?0:(compact?44:190)):0; int right=g_showLayers?(tiny?0:(compact?0:230)):0; if(w-left-right<160){right=0;left= g_showTools?36:0;}
  if(left>0){fill(dc,{0,top,left,h-bottom},PANEL2); if(left>50){label(dc,14,top+14,L"Ferramentas",TEXT,13,true); const wchar_t* tools[]={L"Mover",L"Seleção",L"Laço",L"Pincel",L"Borracha",L"Preenchimento",L"Texto",L"Cortar",L"Conta-gotas",L"Mão"}; for(int i=0;i<10;i++){int yy=top+44+i*35; RECT r{10,yy,left-10,yy+28}; button(dc,r,tools[i],i==g_active_tool);} } else {for(int i=0;i<8;i++){int yy=top+12+i*42; RECT r{7,yy,left-7,yy+30}; fill(dc,r,i==g_active_tool?ACCENT:PANEL); label(dc,14,yy+7,std::to_wstring(i+1),TEXT,13,true);}} }
  if(right>0){

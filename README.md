@@ -68,7 +68,7 @@ The Win32 shell now has a basic keyboard-driven text tool: select **Texto** in t
 
 ### Iteration 16 — custom font discovery
 
-The Win32 shell now creates and scans a `fonts/` directory beside the executable at startup. It attempts to load `.ttf`, `.otf` and `.ttc` font files using the Windows private-font API, without installing them system-wide, and displays the number of successfully loaded font files in the status bar. `fonts/README.txt` documents usage and licensing expectations. Restart the application after changing the folder. This prepares fonts for future text tools; the text tool itself is not yet implemented.
+The Win32 shell creates and scans a `fonts/` directory beside the executable at startup. It accepts `.ttf`, `.otf` and `.ttc` files, registers them privately for the process, adds them to a GDI+ private font collection, and refreshes font enumeration for the Windows font chooser. It does not install fonts system-wide. The status bar reports how many font files were accepted, and `fonts/README.txt` documents setup and licensing. Restart the application after changing the folder. The text tool can choose family, size, style and color and previews that style while typing; committed text is still rasterized, not an editable text object.
 
 
 ### Iteration 18 — shared native image operations in the Windows shell
