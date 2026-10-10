@@ -5,7 +5,8 @@ Expected release layout:
   PS-Touch.exe
   *.dll          runtime DLLs beside the executable for direct Windows loading
   licenses/      third-party license notices included with the package
-  resources/     icons, UI resources, shaders and fonts with redistribution rights
+  fonts/         optional user-supplied .ttf, .otf and .ttc files; never install system-wide
+  resources/     icons, UI resources and shaders with redistribution rights
   config/        user settings stored locally beside the application
   projects/      optional user projects
   cache/         disposable local cache
