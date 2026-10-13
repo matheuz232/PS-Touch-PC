@@ -1,0 +1,58 @@
+name: Windows test build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-x64:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure x64 Release build
+        shell: pwsh
+        run: >-
+          cmake -S . -B build -A x64
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_TARGET_TRIPLET=x64-windows-static
+          -DVCPKG_MANIFEST_MODE=ON
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Assemble test package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = Join-Path $PWD 'package'
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item 'build/Release/PS-Touch.exe' $stage
+          Copy-Item 'README.md' $stage
+          @'
+          PS Touch PC — Windows x64 test build
+
+          This is an experimental native image-editor prototype, not a converted
+          Adobe Photoshop Touch application. It does not yet implement the
+          original PS Touch interface, SWF runtime, proprietary project format,
+          or full filter suite.
+
+          Run PS-Touch.exe on Windows 10/11 x64. This package is experimental.
+          '@ | Set-Content -Encoding utf8 (Join-Path $stage 'LEIA-ME.txt')
+          Compress-Archive -Path "$stage/*" -DestinationPath 'PS-Touch-PC-Windows-x64-test.zip' -Force
+
+      - name: Upload Windows test package
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS-Touch-PC-Windows-x64-test
+          path: PS-Touch-PC-Windows-x64-test.zip
+          if-no-files-found: error
+          retention-days: 14
